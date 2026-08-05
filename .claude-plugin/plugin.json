@@ -1,0 +1,9 @@
+{
+  "name": "vyql",
+  "description": "Scan a codebase for vulnerabilities with VyQL and triage what it finds, following tainted data from source to sink and naming the neutralizing controls that are missing.",
+  "version": "0.2.1",
+  "author": { "name": "Vypr", "email": "eng@vyprsec.ai" },
+  "homepage": "https://github.com/vyprai/vyql",
+  "repository": "https://github.com/vyprai/claude-plugins",
+  "license": "Apache-2.0"
+}

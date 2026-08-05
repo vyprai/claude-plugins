@@ -1,0 +1,11 @@
+{
+  "name": "vypr",
+  "owner": { "name": "Vypr", "email": "eng@vyprsec.ai" },
+  "plugins": [
+    {
+      "name": "vyql",
+      "source": "./",
+      "description": "Scan a codebase for vulnerabilities with VyQL and triage what it finds."
+    }
+  ]
+}
