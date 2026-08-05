@@ -1,6 +1,7 @@
 {
   "name": "vypr",
   "owner": { "name": "Vypr", "email": "eng@vyprsec.ai" },
+  "description": "Security scanning and finding triage for Claude Code, powered by VyQL.",
   "plugins": [
     {
       "name": "vyql",
