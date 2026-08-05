@@ -1,0 +1,35 @@
+name: ci
+
+# The skill documents VyQL's CLI, and the CLI lives in another repository, so
+# nothing here fails when a flag is renamed there. This job installs the current
+# release and checks the skill against it, which is the only thing that turns
+# that drift into a red build rather than an agent running a flag that no longer
+# exists and reporting the error as a finding about the user's code.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # The CLI can change without anything happening here, so check on a timer
+    # as well as on a change.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the current VyQL release
+        run: |
+          set -euo pipefail
+          curl -fsSL https://dl.vyprsec.ai/vyql/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Report the version being checked against
+        run: vyql version
+
+      - name: Validate the skill against that CLI
+        run: python3 scripts/check-skills.py
