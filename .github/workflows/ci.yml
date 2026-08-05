@@ -17,6 +17,20 @@ on:
   workflow_dispatch:
 
 jobs:
+  version:
+    # The plugin version is Claude Code's update cache key, so a skill change
+    # without a bump reaches nobody and reports "already at the latest version".
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Require a version bump when the skill changes
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: ./scripts/check-version-bump.sh "$BASE"
+
   skills:
     runs-on: ubuntu-latest
     steps:
