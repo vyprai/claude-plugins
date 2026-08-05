@@ -51,7 +51,7 @@ uname -m   # arm64/aarch64 -> arm64, x86_64/amd64 -> amd64
 ```
 
 ```sh
-V=v0.2.1; P=darwin_arm64        # linux_amd64 | linux_arm64 | darwin_amd64 | darwin_arm64
+V=v0.2.2; P=darwin_arm64        # linux_amd64 | linux_arm64 | darwin_amd64 | darwin_arm64
 curl -fsSLO https://github.com/vyprai/vyql/releases/download/$V/vyql_${V}_${P}.tar.gz
 curl -fsSLO https://github.com/vyprai/vyql/releases/download/$V/vyql_${V}_${P}.tar.gz.sha256
 shasum -a 256 -c vyql_${V}_${P}.tar.gz.sha256      # or sha256sum -c on Linux
@@ -89,6 +89,12 @@ The skill needs **v0.2.0 or newer**. Earlier builds do not have `-fail-on`,
 Prefer **v0.2.1 or newer** for any install that puts `vyql` on `PATH` through a
 symlink, including Homebrew: earlier builds read the symlink's own path on macOS
 and exit with `could not locate the data directory`.
+
+Prefer **v0.2.2 or newer** when triaging deserialization findings. Earlier builds
+match a package binding against any call sharing the method name, so a project
+that merely lists a package exposing `parse` reports every `.parse()` as CWE-502.
+A CRITICAL deserialization finding from an older build is worth reproducing on
+v0.2.2 before believing it.
 
 ```sh
 vyql version
