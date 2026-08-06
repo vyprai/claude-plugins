@@ -15,7 +15,7 @@ list, no rule can fire**, because rules match concepts and there is no concept
 here to match.
 
 This is the most common answer by a wide margin. It means the framework or
-library is not modelled — a binding gap, not an engine bug.
+library is not modelled: a binding gap, not an engine bug.
 
 Confirm what the vocabulary contains:
 
@@ -49,7 +49,7 @@ Shows each source, whether it reaches a sink, and where it dead-ends. Both
 filters are substrings of concept names.
 
 A filter matching no known concept is an error with a suggestion, not an empty
-result — so if you see one, the name is wrong, not the code.
+result, so if you see one the name is wrong, not the code.
 
 ## 4. Was an `unless` clause satisfied?
 
@@ -59,7 +59,7 @@ vyql explain .
 
 The rule may have fired and then been neutralized. `explain` prints each
 `unless` clause and whether it was satisfied. A satisfied clause means VyQL
-believes a control covers the path — which is the correct outcome if the control
+believes a control covers the path, which is the correct outcome if the control
 is real, and a false negative if the control does not actually neutralize
 anything.
 
@@ -95,5 +95,5 @@ vyql graph -taint .
 ```
 
 Verbose and definitive. Reach for it when `match`, `resolve` and `trace` all
-look right and the finding still does not appear — at that point the question is
+look right and the finding still does not appear. At that point the question is
 about the graph's structure rather than its labels.

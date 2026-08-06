@@ -40,7 +40,7 @@ Runs as a non-root user, so it leaves no root-owned files in the mounted tree.
 ## Release archive
 
 When the machine should not run a script off the network. About 14 MB
-downloaded, 200 MB extracted — nearly all of it the security knowledge base,
+downloaded, 200 MB extracted, nearly all of it the security knowledge base,
 which is why the binary works with no further setup.
 
 Detect the platform, then substitute below:
@@ -78,7 +78,7 @@ go install github.com/vyprai/vyql/cmd/vyql@latest
 ```
 
 State the real cost before suggesting it: this pulls roughly 950 MB into the
-module cache, and the binary resolves its data from there — so `go clean
+module cache, and the binary resolves its data from there, so `go clean
 -modcache` leaves a working binary that cannot find its knowledge base.
 
 ## Version
