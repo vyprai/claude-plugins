@@ -149,7 +149,39 @@ not permission to dismiss.
 
 ## Is it real?
 
-Three questions, in this order.
+### First: where does this code live?
+
+Ask this before the taint questions, because it settles more findings than they
+do. VyQL reports on the code it was pointed at, and it has no idea whether that
+code ships.
+
+Classify the surface:
+
+| Surface | What a finding there usually means |
+|---|---|
+| hosted service, HTTP handler, RPC endpoint | real, treat it as such |
+| library or package API | real, but the caller supplies the input; say so |
+| CLI run by the repo's own developer | depends entirely on who runs it |
+| test fixture, `testdata/`, example, demo | almost never a vulnerability |
+| vendored or generated code | real, but it is not this repo's fix to make |
+
+And classify the source's trust:
+
+- untrusted remote input
+- tenant or user-controlled data
+- trusted operator or developer configuration
+- **an extension point that is meant to execute code**
+
+That last one matters. A plugin loader that evals, a template engine that
+renders, a migration runner that executes SQL: these are doing their job. The
+finding is only real if untrusted input reaches the extension point, which is a
+different question from whether the sink is dangerous.
+
+State the surface and the source trust in the verdict. "Command injection in a
+test fixture" and "command injection in a request handler" are not the same
+finding, and a report that does not distinguish them is not triaged.
+
+### Then: three questions, in this order
 
 **1. Is the source genuinely attacker-controlled?**
 
@@ -192,6 +224,24 @@ vulnerability.
 
 Per-family judgment, what makes an injection, path traversal, SSRF, crypto or
 secret finding real, is in `references/triage.md`.
+
+### Say what would change your mind
+
+Every verdict carries two things beyond the answer itself.
+
+**Counterevidence:** what you found that argues the other way. A guard one call
+up, a caller that only ever passes constants, a deploy config that never enables
+the route. Include it even when you still think the finding is real. A verdict
+with nothing against it usually means nobody looked.
+
+**Proof gaps:** what you could not establish from the code. Whether the route is
+registered in production, whether the config toggle defaults on, whether the
+caller is internal. Name them rather than assuming the safe answer or the scary
+one.
+
+A finding you cannot settle is a legitimate outcome. Report it as unresolved,
+name the gap, and say the smallest thing that would close it. That is more useful
+than a confident verdict in either direction.
 
 ## Record the verdict, or it is lost
 
