@@ -137,14 +137,15 @@ a verified finding as proof of exploitability.
 
 Work in this order, and read `references/verify.md` for how:
 
-1. **Where does this code live?** Surface and source trust, before anything else.
+1. **Group by rule family** and fan out, one subagent per family, four at most.
+   Families past the cap are deferred by name, never dropped.
+2. **Where does this code live?** Surface and source trust, before anything else.
    A path traversal in `testdata/` is not a vulnerability, and a plugin loader
-   that evals is doing its job. This settles more findings than taint analysis.
-2. **What fired, and why.** `vyql explain .` gives the proof tree and the
+   that evals is doing its job.
+3. **What fired, and why.** `vyql explain .` gives the proof tree and the
    `unless` lines, which are the fix list.
-3. **Three questions**, all of them: is the source really attacker-controlled,
+4. **Three questions**, all of them: is the source really attacker-controlled,
    does the path really carry the value, is there a control VyQL did not model.
-   Do not stop at the first that resolves.
 
 Every verdict carries **counterevidence** (what argues the other way, including
 when you still think it is real) and **proof gaps** (what the code could not

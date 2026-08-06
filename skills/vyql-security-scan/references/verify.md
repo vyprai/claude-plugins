@@ -2,6 +2,54 @@
 
 Read this when working through phase 5 of `SKILL.md`.
 
+## Fanning out by family
+
+Group the findings before verifying any of them.
+
+```sh
+vyql scan -fail-on none --format json . > /tmp/vyql-findings.json
+```
+
+Each finding carries a `rule` like `VYQL-INJ-004`. The family is the middle
+segment, `INJ`. Group by it, then order the groups by the highest severity each
+one contains.
+
+Spawn one subagent per family, **at most four per run**. Give each:
+
+- its family's findings, as the JSON objects
+- the repository path
+- the family's section of `references/triage.md`
+- this file, from the next section onward
+
+Each returns verdicts in the format below: surface and source trust, the three
+questions, counterevidence, proof gaps.
+
+Four is a cost bound. Fourteen families exist in the corpus, and fourteen
+subagents is a token surprise large enough that someone uninstalls the skill over
+it. Four also keeps the returned verdicts small enough to reconcile in one reply.
+
+Families past the cap are **deferred, by name**, with an offer to run the next
+batch. Never drop one silently.
+
+If a subagent errors, its family is **unverified** and you say so. A dropped
+family means a whole class went unexamined with nobody noticing.
+
+**Where there is no subagent capability**, run the same procedure sequentially in
+the main loop, one family at a time, and say that is what is happening. This file
+is a plain reference; nothing here needs subagents except the speed.
+
+### Why family and not severity
+
+Triage has already ordered by severity, so severity is spent by the time verify
+starts.
+
+The stronger reason is that systematic false positives arrive as a family. A
+repository with a sanitizer VyQL does not model will not produce one wrong
+finding; it produces every path traversal that flows through that helper. One
+agent holding all of them spots the shared call in a single pass. Split across
+severity buckets, several agents each conclude "looks real" and nobody sees the
+pattern.
+
 VyQL is a static analyzer. Verification here means the path holds up under
 scrutiny, not that the bug is exploitable. Say it in those terms and never report
 a verified finding as proof of exploitability.
