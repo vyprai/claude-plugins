@@ -63,28 +63,9 @@ Decide what to look at before running anything.
 | "audit this repo", "is this codebase secure" | the whole tree |
 | "review this PR", "did my change introduce anything" | the diff |
 
-**The diff case is different and matters.** On a codebase with an existing
-backlog, scanning the whole tree at review time buries the two findings the
-change actually introduced under two hundred it did not. Scan both sides and
-diff:
-
-```sh
-base=$(git merge-base HEAD origin/main)          # or the PR's base ref
-git worktree add -q /tmp/vyql-base "$base"
-vyql scan -fail-on none --format json /tmp/vyql-base > /tmp/before.json
-vyql scan -fail-on none --format json .           > /tmp/after.json
-vyql diff /tmp/before.json /tmp/after.json
-git worktree remove /tmp/vyql-base --force
-```
-
-**Use a worktree, never `git stash`.** Stashing puts the user's uncommitted work
-somewhere they did not ask for it, and if anything fails between the stash and
-the pop it stays there silently. A worktree is a separate checkout: the working
-tree is untouched whatever happens, and a leftover one is harmless.
-
-`diff` keys on the finding fingerprint, which is anchored to rule and location
-rather than line number, so moving a function does not read as new findings.
-Report the added ones. Mention removed ones only if the user is checking a fix.
+The diff case is not the whole-tree scan with a filter. On a codebase with a
+backlog it buries the findings a change introduced under the ones it did not.
+`references/scope.md` has the recipe.
 
 ## 2. Scan
 
@@ -219,21 +200,4 @@ These are the difference between a useful security report and a dangerous one.
 
 ## Command reference
 
-| Command | Answers |
-|---|---|
-| `vyql scan -fail-on none -all .` | what is wrong, everything reported |
-| `vyql scan -coverage .` | what was read, skipped, and left unanalysed |
-| `vyql scan --format json .` | findings as JSON, for `diff` |
-| `vyql diff before.json after.json` | what a change introduced or removed |
-| `vyql explain .` | why each finding fired, with negation evidence |
-| `vyql query -concept X .` | every node labelled with a concept |
-| `vyql trace -from X -to Y .` | the path, or where it stops |
-| `vyql match .` | what got labelled at all |
-| `vyql resolve .` | which calls did not resolve |
-| `vyql definitions -kind concepts` | the concept vocabulary |
-
-`-from`, `-to` and `-concept` are substring filters over concept names. A filter
-matching no known concept is an error with a suggestion, not an empty result. If
-you get one, fix the name rather than concluding there is nothing there.
-
-Paths work as they do for `scan`; with no path, the working directory is used.
+`references/commands.md`.
