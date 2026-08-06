@@ -52,6 +52,39 @@ Stop after any phase the user did not ask to go past. A list of findings is a
 complete answer to "what is wrong here"; do not verify all of them uninvited,
 and do not write a reproduction unless asked.
 
+## Where to stop and ask
+
+Confirmation costs attention, so spend it only where a phase costs money or does
+something the user cannot undo.
+
+| Phase | Gate |
+|---|---|
+| scope, scan, coverage, list | none. Read-only, cheap, and the point of asking |
+| verify | **ask.** Name the families found, propose the batch, wait |
+| reproduce | **ask twice.** Once to write one, again before booting anything |
+| fix | **asks, and does nothing until told.** Optional, never reached on its own |
+
+A user who asked "is this repo secure" gets coverage and a list without being
+asked three times whether they meant it.
+
+## When you are blocked
+
+A blocked phase is not a finished phase. Say what is blocking you, say what would
+unblock it, and wait. If the user supplies it, continue from there rather than
+starting again.
+
+Ask once, with the specific thing needed. "The boot failed" is not a question.
+"`DATABASE_URL` is unset and postgres did not start. Do you have one I should
+use, or shall I write the test instead?" is.
+
+Every ask has a decline path, and declining is not a failure. The fallback still
+produces a real artifact.
+
+**A user handing over their own environment is consent.** The rule against
+mounting their `.env` is a rule against doing it silently, not against being
+given it. But a verdict resting on user-supplied context records that it does:
+"real, assuming `internal/` is deployed, which the user confirmed."
+
 ---
 
 ## 1. Scope
@@ -83,51 +116,28 @@ code. There is no flag to "show more findings".
 
 ## 3. Coverage, before any finding
 
-The output ends with what was read, and warns about what was not:
-
-```
-scanned python:1 textpattern:1 — 9 finding(s)
-warning: 15 file(s) matched no frontend and were not analysed (.zig 12, .cob 3)
-```
+The scan ends with what it read and warns about what it did not.
 
 **Never suppress that warning, and never list findings without it.** A clean
 report over a tree that was mostly skipped looks exactly like a clean report over
-a tree that was fully read. Run `vyql scan -coverage .` for the full account when
-anything looks off.
+a tree that was fully read.
 
-Three things to state plainly, before any finding:
+**Never say "no vulnerabilities".** Say "no findings in what was analysed", and
+say what that was.
 
-1. **What was actually parsed**, from the `scanned` line, against what is in the
-   repository. If it says `python:1` and the project is forty Java files, that is
-   the headline, not the findings.
-2. **Depth.** Java, Python and JavaScript are the reference frontends. Other
-   languages range down to call-and-concat coverage, so "no findings" in Elixir
-   means materially less than in Java.
-3. **Never say "no vulnerabilities".** Say "no findings in what was analysed",
-   and say what that was.
-
-One gap the tool admits and you should repeat when it matters: a file whose parse
-partially failed still counts as parsed, because tree-sitter recovers from syntax
-errors.
+`references/coverage.md` has what to state and how to read the warning.
 
 ## 4. List
 
 Report all of them. There is no cap, and summarising some away loses the ones the
 user most needs.
 
-1. Number the findings, so the user can say "2 is wrong" without quoting it back.
-2. Give every finding a `path:line`.
-3. Lead with the rule and severity, then one line on what reaches what.
-4. Keep it short. This phase is the menu, not the analysis.
+Number them, give every one a `path:line`, lead with rule and severity, keep it
+short. This phase is the menu, not the analysis. Order by severity.
 
-Order by severity, then by how much of the code the finding sits in front of.
-
-Then ask which to verify. Offer "all HIGH and CRITICAL" as the default, because
-that is the useful batch and it is bounded.
-
-**On verifying everything:** a serial verify of two hundred findings will run out
-of room and start degrading silently, which is worse than not doing it. Verify
-all HIGH and CRITICAL, then say plainly what was left and offer the next batch.
+Then ask which to verify, offering "all HIGH and CRITICAL" as the default. A
+serial verify of two hundred findings degrades silently, which is worse than not
+doing it: verify the batch, then say plainly what was left.
 
 ## 5. Verify
 
