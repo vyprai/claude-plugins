@@ -154,185 +154,44 @@ VyQL is a static analyzer. Verification here means the path holds up under
 scrutiny, not that the bug is exploitable. Say it in those terms and never report
 a verified finding as proof of exploitability.
 
-### First: where does this code live?
+Work in this order, and read `references/verify.md` for how:
 
-Ask this before the taint questions. It settles more findings than they do, and
-VyQL has no idea whether the code it was pointed at ships.
+1. **Where does this code live?** Surface and source trust, before anything else.
+   A path traversal in `testdata/` is not a vulnerability, and a plugin loader
+   that evals is doing its job. This settles more findings than taint analysis.
+2. **What fired, and why.** `vyql explain .` gives the proof tree and the
+   `unless` lines, which are the fix list.
+3. **Three questions**, all of them: is the source really attacker-controlled,
+   does the path really carry the value, is there a control VyQL did not model.
+   Do not stop at the first that resolves.
 
-| Surface | What a finding there usually means |
-|---|---|
-| hosted service, HTTP handler, RPC endpoint | real, treat it as such |
-| library or package API | real, but the caller supplies the input; say so |
-| CLI run by the repo's own developer | depends entirely on who runs it |
-| test fixture, `testdata/`, example, demo | almost never a vulnerability |
-| vendored or generated code | real, but not this repo's fix to make |
-
-And classify the source's trust:
-
-- untrusted remote input
-- tenant or user-controlled data
-- trusted operator or developer configuration
-- **an extension point that is meant to execute code**
-
-That last one matters. A plugin loader that evals, a template engine that
-renders, a migration runner that executes SQL: these are doing their job. The
-finding is only real if untrusted input reaches the extension point, which is a
-different question from whether the sink is dangerous.
-
-State the surface and the source trust in the verdict. "Command injection in a
-test fixture" and "command injection in a request handler" are not the same
-finding.
-
-### Then: read what fired
-
-```sh
-vyql explain .
-```
-
-```
-[P2] [CRITICAL] VYQL-INJ-002  (conf=high, fp=cfb54bfb4024aa90)
-    source: code.HttpInput @ server.js:4
-    sink: code.CommandExecution @ server.js:5
-    taint path: server.jsAttr#77 -> server.jsFormat#78 -> server.jsArg#80
-    unless path coveredBy core.ShellEscape: not satisfied
-    unless endpoint coveredBy core.CommandArgumentValidation: not satisfied
-```
-
-The `unless` lines are the fix list. Each names the control whose absence made
-the finding fire, so the fix is "introduce this control", in the language's
-idiom.
-
-`conf=` is the engine's own confidence. Low confidence is a hint to look harder,
-not permission to dismiss.
-
-### Then: three questions, in this order
-
-Work all three before answering. Do not stop at the first that resolves: a source
-that turns out to be a constant tells you nothing about whether the path was
-real, and the next scan will ask again.
-
-**1. Is the source genuinely attacker-controlled?**
-
-```sh
-vyql query -concept HttpInput .
-```
-
-Lists every node that got the label, with its location. If the "source" is a
-constant, a test fixture or an internal caller, the finding is a false positive.
-Say so, and show this output as the reason.
-
-**2. Does the path really carry the value?**
-
-```sh
-vyql trace -from HttpInput -to SqlExecution .
-```
-
-Read the hops in `taint path:`. A path through a function that discards or
-replaces the value is a false positive.
-
-**3. Is there a control VyQL did not model?**
-
-If the code neutralizes the value by a route the ontology does not know, you have
-found two things: the finding is a false positive, **and** there is a binding
-gap. Report both. The second is how coverage improves, and it is worth more than
-the first.
-
-Before concluding this, check one known modelling limitation: an inline control
-call inside a concatenation sometimes fails to neutralize where assign-then-use
-works.
-
-```python
-sink("... " + escape(p))     # may not register as covered
-clean = escape(p)            # does
-sink("... " + clean)
-```
-
-If that is the shape, the code is fine and the finding is a modelling gap, not a
-vulnerability.
-
-Per-family judgment, what makes an injection, path traversal, SSRF, crypto or
-secret finding real, is in `references/triage.md`.
-
-### Say what would change your mind
-
-Every verdict carries two things beyond the answer.
-
-**Counterevidence:** what you found that argues the other way. A guard one call
-up, a caller that only ever passes constants, a deploy config that never enables
-the route. Include it even when you still think the finding is real. A verdict
-with nothing against it usually means nobody looked.
-
-**Proof gaps:** what you could not establish from the code. Whether the route is
-registered in production, whether the config toggle defaults on, whether the
-caller is internal. Name them rather than assuming the safe answer or the scary
-one.
-
-A finding you cannot settle is a legitimate outcome. Report it as unresolved,
-name the gap, and say the smallest thing that would close it.
+Every verdict carries **counterevidence** (what argues the other way, including
+when you still think it is real) and **proof gaps** (what the code could not
+settle). Unresolved is a legitimate outcome if you name the gap.
 
 ## 6. Reproduce
 
-Only when asked, and only for a finding that survived verify.
+Only when asked, and only for a finding that survived verify. A reproduction is a
+failing test or a local request showing the path is real. It is not an exploit.
 
-A reproduction is **a failing test or a local request that shows the path is
-real**. It is not an exploit, and its job is to let the developer confirm the bug
-now and prove the fix later.
+Three rules, not negotiable:
 
-Three rules, and they are not negotiable.
+- **Ask first**, and say where it runs.
+- **Local only.** Never a deployed host, a staging environment, or any address
+  the user has not confirmed is theirs.
+- **Writing it is the deliverable.** Running it is the user's call.
 
-- **Ask first.** Say what you are about to write and where it runs.
-- **Local only.** Against a service the user started on their own machine, or as
-  a test in their own suite. Never point it at a deployed host, a staging
-  environment, or any address the user has not confirmed is theirs.
-- **Do not run it against anything you did not just create.** Writing the repro
-  is the deliverable. Executing it is the user's call.
+It proves the path is reachable with the input the analyzer claimed. Not the
+blast radius, not production exploitability.
 
-Prefer the form the repo already has. A project with tests gets a failing test:
-
-```python
-def test_download_rejects_traversal(client):
-    r = client.get("/download", query_string={"name": "../../etc/passwd"})
-    assert r.status_code == 400        # fails today, passes once fixed
-```
-
-A service without a suite gets the request shape instead, against localhost.
-
-**What it proves:** the path is reachable with the input the analyzer claimed.
-Not the blast radius, not that it is exploitable in production, and not that
-other paths to the same sink are safe.
-
-If the finding is a missing control rather than a reachable path, a hardcoded
-secret or weak cipher, there is nothing to reproduce. Say so instead of inventing
-a test.
+`references/reproduce.md` has the forms and what to do when there is nothing to
+reproduce.
 
 ## Record the verdict, or it is lost
 
 Triage that lives only in the conversation is gone the moment it ends, and the
-next scan reports all of it again. Offer to write the verdicts down:
-
-```sh
-vyql scan -baseline .vyql-baseline.json .     # report only what is new
-```
-
-Entries are keyed on the finding fingerprint, anchored to rule and location
-rather than line number, so a verdict survives edits elsewhere in the file.
-
-```json
-{ "fp": "cfb54bfb4024aa90", "verdict": "false-positive",
-  "reason": "source is a build-time constant, not request data" }
-```
-
-`false-positive` and `accepted` are different claims. One says the finding is
-wrong, the other says it is right and being lived with. Record which, and always
-write the reason: an entry with no reason is a suppression nobody can review.
-
-For a codebase with an existing backlog, `-baseline-write .vyql-baseline.json`
-records everything as `accepted` so the gate fires only on new findings. Say
-plainly that this accepts the backlog rather than fixing it.
-
-**If the scan warns that baseline entries match nothing, surface it.** The code
-they excused has changed, and a suppression that outlives its reason is worse
-than no suppression.
+next scan reports all of it again. Offer to write the verdicts into a baseline:
+`references/baseline.md`.
 
 ## Proposing a fix
 
