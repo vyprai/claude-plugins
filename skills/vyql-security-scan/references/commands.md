@@ -1,0 +1,22 @@
+# Command reference
+
+Read this when you need a command the phase text did not give you.
+
+| Command | Answers |
+|---|---|
+| `vyql scan -fail-on none -all .` | what is wrong, everything reported |
+| `vyql scan -coverage .` | what was read, skipped, and left unanalysed |
+| `vyql scan --format json .` | findings as JSON, for `diff` |
+| `vyql diff before.json after.json` | what a change introduced or removed |
+| `vyql explain .` | why each finding fired, with negation evidence |
+| `vyql query -concept X .` | every node labelled with a concept |
+| `vyql trace -from X -to Y .` | the path, or where it stops |
+| `vyql match .` | what got labelled at all |
+| `vyql resolve .` | which calls did not resolve |
+| `vyql definitions -kind concepts` | the concept vocabulary |
+
+`-from`, `-to` and `-concept` are substring filters over concept names. A filter
+matching no known concept is an error with a suggestion, not an empty result. If
+you get one, fix the name rather than concluding there is nothing there.
+
+Paths work as they do for `scan`; with no path, the working directory is used.
