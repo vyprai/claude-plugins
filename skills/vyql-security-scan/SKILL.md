@@ -49,7 +49,7 @@ vyql scan -fail-on none -all .
 ```
 
 `-fail-on none` matters: by default `scan` exits 1 when it finds anything HIGH
-or CRITICAL, which is right for CI and wrong here — a non-zero exit reads as
+or CRITICAL, which is right for CI and wrong here. A non-zero exit reads as
 "the scan failed" and derails the run. `-all` adds attention and review flags
 that a plain scan omits.
 
@@ -74,7 +74,7 @@ Three things to state plainly, before any finding:
 
 1. **What was actually parsed**, from the `scanned` line, against what is in the
    repository. If it says `python:1` and the project is forty Java files, that
-   is the headline — not the findings.
+   is the headline, not the findings.
 2. **Depth.** Java, Python and JavaScript are the reference frontends. Other
    languages range down to call-and-concat coverage, so "no findings" in Elixir
    means materially less than in Java.
@@ -87,9 +87,29 @@ syntax errors.
 
 ### Then triage
 
-Group by severity and rule family. Triage the significant ones using the section
-below — do not just reformat the scanner's output, which the user could have read
-themselves.
+Group by severity and rule family. Work through them using the section below.
+Do not just reformat the scanner's output; the user can read that themselves.
+
+**Do not stop at the first interesting finding.** Scanners get dismissed on the
+strength of their weakest report, so a real one buried under three you skipped is
+worse than no scan. Go through every HIGH and CRITICAL. If you triage a subset,
+say which and why, before the findings rather than after.
+
+### How to report
+
+Report all of them. There is no cap, and summarising some away loses the ones the
+user most needs.
+
+1. Number the findings, so the user can say "2 is wrong" without quoting it back.
+2. Give every finding a `path:line`. A finding without a location cannot be acted
+   on or argued with.
+3. Lead each one with the verdict you reached, not the rule name: real,
+   false positive, or needs-a-human, then the evidence for that.
+4. Keep the prose short. The `unless` lines are the fix list; restating them at
+   length adds nothing.
+
+Order by severity, then by how sure you are. A CRITICAL you cannot confirm goes
+below a HIGH you can.
 
 ## Adjudicate
 
@@ -103,6 +123,11 @@ adjudicating a finding another scanner reported: point VyQL at the same code and
 ask whether a path really exists.
 
 If the question is "why did this **not** fire", read `references/debugging.md`.
+
+One finding usually has more than one reason to doubt it. Work through all three
+questions below before answering, rather than stopping at the first that
+resolves: a source that turns out to be a constant does not tell you whether the
+path was real, and the next scan will ask again.
 
 ## Reading a finding
 
@@ -134,7 +159,7 @@ vyql query -concept HttpInput .
 
 Lists every node that got the label, with its location. If the "source" is
 actually a constant, a test fixture or an internal caller, the finding is a
-false positive — say so and show this output as the reason.
+false positive. Say so, and show this output as the reason.
 
 **2. Does the path really carry the value?**
 
@@ -165,8 +190,8 @@ sink("... " + clean)
 If that is the shape, the code is fine and the finding is a modelling gap, not a
 vulnerability.
 
-Per-family judgment — what makes an injection, path traversal, SSRF, crypto or
-secret finding real — is in `references/triage.md`.
+Per-family judgment, what makes an injection, path traversal, SSRF, crypto or
+secret finding real, is in `references/triage.md`.
 
 ## Record the verdict, or it is lost
 
@@ -186,7 +211,7 @@ file.
   "reason": "source is a build-time constant, not request data" }
 ```
 
-`false-positive` and `accepted` are different claims — one says the finding is
+`false-positive` and `accepted` are different claims. One says the finding is
 wrong, the other says it is right and being lived with. Record which, and always
 write the reason: an entry with no reason is a suppression nobody can review.
 
@@ -203,7 +228,7 @@ than no suppression.
 Name the control from the `unless` clause, give the idiom for the language, say
 where it goes. **Do not edit the code.** The user applies it.
 
-If they do apply a fix, re-scanning is a reasonable check — but say what it
+If they do apply a fix, re-scanning is a reasonable check, but say what it
 proves. A green re-scan means the pattern stopped matching. It does not mean the
 code is safe, and reporting it as proof would be the same overclaim this tool
 exists to avoid.
@@ -236,7 +261,7 @@ These are the difference between a useful security report and a dangerous one.
 | `vyql definitions -kind concepts` | the concept vocabulary |
 
 `-from`, `-to` and `-concept` are substring filters over concept names. A filter
-matching no known concept is an error with a suggestion, not an empty result —
-so if you get one, fix the name rather than concluding there is nothing there.
+matching no known concept is an error with a suggestion, not an empty result. If
+you get one, fix the name rather than concluding there is nothing there.
 
 Paths work as they do for `scan`; with no path, the working directory is used.
