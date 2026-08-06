@@ -32,21 +32,35 @@ you  audit this repo for security problems
      2. VYQL-PATH-001 high      api/files.py:23  query param reaches open()
      ...
 
-you  is 2 real?
+you  verify the high ones
 
-     api/files.py is a request handler and the source is untrusted, but
-     there is a startswith() check two lines up that VyQL did not model
-     as containment. False positive, and a binding gap worth reporting.
+     4 families: INJ (2), PATH (3), CRY (1), CFG (1). Verifying all four,
+     one agent each. Nothing deferred.
 
-you  what about 1
+     INJ   1 real, 1 false positive
+     PATH  3 false positives, all through the same startswith() guard
+     CRY   1 real
+     CFG   1 unresolved, needs to know whether debug mode ships
 
-     Real. The path carries the value with no escaping. Fix is
-     core.ShellEscape: subprocess with a list rather than shell=True.
+     The three PATH findings share a cause. That guard is a containment
+     check VyQL does not model, so it is a binding gap, not three bugs.
 
-you  write me a test that proves it
+you  what about the INJ one
 
-     Written to tests/test_users_injection.py. It fails now and passes
-     once the fix lands. Shall I run it?
+     Real. api/users.py:88 is a request handler and the path carries the
+     value with no escaping. Fix is core.ShellEscape: subprocess with a
+     list rather than shell=True.
+
+you  prove it
+
+     Booting from a clean worktree at the scanned commit.
+     POST /users/import with a payload of "; id" returns uid=0(root).
+     Torn down.
+
+you  fix it then
+
+     One file, api/users.py, introducing subprocess with an argument list.
+     Shall I?
 ```
 
 A reproduction runs against your own machine and nothing else, and the skill asks
@@ -56,16 +70,22 @@ The flow underneath is always the same, and you stop wherever you have your
 answer:
 
 ```
-scope → scan → coverage → list → verify → reproduce
+scope → scan → coverage → list → verify → reproduce → fix
 ```
 
 **Coverage comes before findings, every time.** A clean report over a tree that
 was mostly skipped looks exactly like a clean report over a tree that was fully
 read, and the skill will not list findings without saying which is which.
 
-Two other things it will not do: report a verified finding as proof that a bug is
-exploitable, since VyQL is static and cannot run anything; and install the `vyql`
-binary or write a reproduction without asking first. A security tool that
+Verifying fans out, one agent per rule family, four at most. That grouping is
+the point: a systematic false positive arrives as a whole family, and one agent
+holding all of them spots the shared guard that no per-finding review would.
+
+Three things it will not do: report a verified finding as proof that a bug is
+exploitable, since VyQL is static and cannot run anything; install the `vyql`
+binary, write a reproduction, or edit your code without asking first; and boot
+anything against an instance you are already running, because that one is wired
+to your real database. A security tool that
 downloads and runs things unprompted has the wrong instincts.
 
 ### Without Claude Code
