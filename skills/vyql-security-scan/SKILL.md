@@ -41,7 +41,7 @@ anything**. Never download and run a binary on someone's machine unannounced.
 One path, five phases. Run them in order.
 
 ```
-scope → scan → coverage → list → verify → reproduce
+scope → scan → coverage → list → verify → reproduce → fix
 ```
 
 Most requests start at scope. If the user arrives holding a finding already,
@@ -163,21 +163,21 @@ settle). Unresolved is a legitimate outcome if you name the gap.
 
 ## 6. Reproduce
 
-Only when asked, and only for a finding that survived verify. A reproduction is a
-failing test or a local request showing the path is real. It is not an exploit.
+Only when asked, and only for a finding that survived verify.
+
+Boot the application from a clean worktree and exploit that. Never the instance
+the developer is already running. If it will not boot, write a failing test
+instead and say the boot did not come up, which is the common outcome and not a
+degraded one.
 
 Three rules, not negotiable:
 
-- **Ask first**, and say where it runs.
+- **Ask first**, and say what will be started.
 - **Local only.** Never a deployed host, a staging environment, or any address
   the user has not confirmed is theirs.
 - **Writing it is the deliverable.** Running it is the user's call.
 
-It proves the path is reachable with the input the analyzer claimed. Not the
-blast radius, not production exploitability.
-
-`references/reproduce.md` has the forms and what to do when there is nothing to
-reproduce.
+`references/reproduce.md` has the boot, the exploit and the teardown.
 
 ## Record the verdict, or it is lost
 
@@ -185,15 +185,16 @@ Triage that lives only in the conversation is gone the moment it ends, and the
 next scan reports all of it again. Offer to write the verdicts into a baseline:
 `references/baseline.md`.
 
-## Proposing a fix
+## 7. Fix
 
-Name the control from the `unless` clause, give the idiom for the language, say
-where it goes. **Do not edit the code.** The user applies it.
+Optional, last, and never reached on its own.
 
-If they do apply a fix, re-scanning is a reasonable check, but say what it
-proves. A green re-scan means the pattern stopped matching. It does not mean the
-code is safe, and reporting it as proof would be the same overclaim this tool
-exists to avoid.
+The default is unchanged: name the control from the `unless` clause, give the
+idiom for the language, say where it goes, and leave the edit to the user.
+
+If the user asks for the change to be made, `references/fix.md` has the rules.
+Only a finding that survived verify, name the files first and wait, smallest edit
+that introduces the control, re-run the reproduction if one exists.
 
 ## Honesty rules
 
