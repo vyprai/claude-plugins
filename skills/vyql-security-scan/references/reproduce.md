@@ -31,8 +31,29 @@ test instead.
 Boot it with throwaway state, bound to localhost:
 
 ```sh
-docker compose up -d --wait
+docker compose up -d
 ```
+
+**`docker compose up --wait` exits 0 for a container that is about to die.** It
+returns once the container is running, which is before dependencies install and
+before the process reads its configuration. Measured on a fixture that exits with
+`KeyError: 'DATABASE_PATH'`: `--wait` returned 0 and `ps` reported `running`.
+
+So poll for whichever comes first, the app answering or the container exiting:
+
+```sh
+port=$(docker compose port app 3000 | cut -d: -f2)
+for _ in $(seq 1 30); do
+  case "$(docker compose ps -a --format '{{.State}}' | head -1)" in
+    exited) docker compose logs --tail 20; echo "boot failed"; break ;;
+  esac
+  curl -fsS -o /dev/null "http://127.0.0.1:$port/" && break
+  sleep 2
+done
+```
+
+On failure, read the logs before deciding what to do. `KeyError: 'DATABASE_PATH'`
+is a question to ask the user, not a reason to give up.
 
 **One attempt.** Retrying a cold boot that needs a seeded database burns minutes
 to reach the same fallback. Supplying missing environment is a new set of inputs,

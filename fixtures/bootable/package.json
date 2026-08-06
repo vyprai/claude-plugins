@@ -1,0 +1,5 @@
+{
+  "name": "vyql-fixture-bootable",
+  "private": true,
+  "dependencies": { "express": "^4.18.0" }
+}

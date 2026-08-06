@@ -1,7 +1,7 @@
 {
   "name": "vyql",
   "description": "Scan a codebase for vulnerabilities with VyQL and triage what it finds, following tainted data from source to sink and naming the neutralizing controls that are missing.",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "author": {
     "name": "Vypr",
     "email": "eng@vyprsec.ai"

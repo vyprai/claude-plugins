@@ -1,0 +1,24 @@
+services:
+  app:
+    image: node:22-slim
+    working_dir: /app
+    volumes:
+      - .:/app
+    # /var/data is the directory the app serves from. Without it the traversal
+    # fails on the missing intermediate path rather than escaping, and the
+    # fixture proves nothing.
+    command: >
+      sh -c "mkdir -p /var/data
+      && echo 'a public file' > /var/data/readme.txt
+      && npm install --silent
+      && node app.js"
+    ports:
+      - "127.0.0.1:0:3000"
+    # Without this, `up --wait` returns as soon as the container is running,
+    # which is well before npm install finishes and the app listens.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/download?name=readme.txt').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
