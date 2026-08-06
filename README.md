@@ -45,8 +45,12 @@ you  what about 1
 
 you  write me a test that proves it
 
-     Writes a failing test. Local only, and it asks before running it.
+     Written to tests/test_users_injection.py. It fails now and passes
+     once the fix lands. Shall I run it?
 ```
+
+A reproduction runs against your own machine and nothing else, and the skill asks
+before executing one. Writing it is the deliverable; running it is your call.
 
 The flow underneath is always the same, and you stop wherever you have your
 answer:
