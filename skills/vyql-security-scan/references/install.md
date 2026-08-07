@@ -81,6 +81,24 @@ State the real cost before suggesting it: this pulls roughly 950 MB into the
 module cache, and the binary resolves its data from there, so `go clean
 -modcache` leaves a working binary that cannot find its knowledge base.
 
+## When an install method fails
+
+Still ask first; a failed download is not license to try three more unprompted.
+Present the ladder and let the user pick:
+
+1. **Install script fails** (network, TLS, checksum mismatch): a checksum
+   mismatch is a stop, not a retry - report it, do not work around it. For a
+   transient network error, offer Homebrew or the release archive.
+2. **Wrong architecture** in the archive name: re-derive from `uname -s`/`uname
+   -m` and offer the matching asset, rather than retrying the same URL.
+3. **No prebuilt asset for the platform** (Windows): WSL or the GitHub Action,
+   named in this file.
+4. **Last resort** `go install`: only for Go developers, and only after stating
+   the ~950 MB module-cache cost already documented here.
+
+Never retry an identical failing download. Change the method, the asset, or the
+source, or ask.
+
 ## Version
 
 The skill needs **v0.2.0 or newer**. Earlier builds do not have `-fail-on`,
