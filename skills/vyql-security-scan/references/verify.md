@@ -2,6 +2,16 @@
 
 Read this when working through phase 5 of `SKILL.md`.
 
+## VyQL's finding is a hypothesis
+
+The proof tree is the map, the code is the territory. Every verdict rests on
+code you opened and a path you walked by hand, not on what the scanner asserts
+about itself - because bindings and taint modelling do not cover every language,
+framework, or templating engine, and a confident-looking path can rest on a
+mislabelled source. `vyql match`, `vyql resolve` and `vyql trace` corroborate;
+they never substitute for reading the code. A verdict that cites only the
+scanner is not a verdict.
+
 ## Fanning out by family
 
 Group the findings before verifying any of them.
@@ -13,6 +23,43 @@ vyql scan -fail-on none --format json . > /tmp/vyql-findings.json
 Each finding carries a `rule` like `VYQL-INJ-004`. The family is the middle
 segment, `INJ`. Group by it, then order the groups by the highest severity each
 one contains.
+
+### Write the worklist before dispatching
+
+Fan-out state must outlive this conversation, so a different session (or person)
+can resume. Before spawning anything, write `vyql-triage.md` at the scanned
+repo's root (offer to add it to `.gitignore`), and save the raw scan JSON beside
+it:
+
+```sh
+vyql scan -fail-on none --format json . > vyql-findings.json
+```
+
+`vyql-triage.md` structure:
+
+```markdown
+# VyQL triage: <commit sha>, <date>
+Coverage: <scanned line>. Binding gaps: <frameworks with no bindings>.
+
+## Findings
+1. [ ] VYQL-INJ-002  critical  api/users.py:88  request body -> shell
+2. [ ] VYQL-PATH-001 high      api/files.py:23  query param -> open()
+...
+
+## Batches (one agent per family, 4 max)
+- [ ] INJ (2)   verdict:
+- [ ] PATH (3)  verdict:
+- [ ] CRY (1)   deferred: over the 4-family cap
+
+## Verdicts (append as they land)
+### INJ-002: real | false-positive | unresolved
+counterevidence: ...
+proof gaps: ...
+```
+
+A later session resumes by re-scanning, `vyql diff vyql-findings.json <new>.json`
+to confirm nothing moved, and picking up unchecked boxes. The worklist is working
+state; `references/baseline.md` remains the settled-verdict record.
 
 Spawn one subagent per family, **at most four per run**. Give each:
 
@@ -31,8 +78,15 @@ it. Four also keeps the returned verdicts small enough to reconcile in one reply
 Families past the cap are **deferred, by name**, with an offer to run the next
 batch. Never drop one silently.
 
-If a subagent errors, its family is **unverified** and you say so. A dropped
-family means a whole class went unexamined with nobody noticing.
+If a subagent errors or times out, do not drop its family. Work the ladder:
+
+1. Retry once with narrower scope: one finding at a time instead of the whole
+   family, so one pathological path cannot sink the batch.
+2. Still failing: mark the family **deferred by name** in `vyql-triage.md` with
+   what was tried, and offer to run it alone next.
+
+A silently dropped family means a whole class went unexamined with nobody
+noticing. That is the one outcome forbidden here.
 
 **Where there is no subagent capability**, run the same procedure sequentially in
 the main loop, one family at a time, and say that is what is happening. This file
