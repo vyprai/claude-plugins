@@ -59,6 +59,25 @@ is a question to ask the user, not a reason to give up.
 to reach the same fallback. Supplying missing environment is a new set of inputs,
 not a retry, and is worth one more attempt.
 
+### When the boot does not come up
+
+The three rules still hold: ask first, local only, writing the repro is the
+deliverable. Work the boot as a ladder, not a single shot:
+
+1. **No `compose.yaml`/`Dockerfile`:** ask whether one lives under another name
+   or what command starts the app (the existing ask-with-a-decline-path). If
+   there is still none, go to 4.
+2. **Container exits immediately** with a missing-env error (`KeyError:
+   'DATABASE_PATH'`): supplying the env is new input, not a retry, and is worth
+   one more attempt. Name the variable and ask.
+3. **Port already bound:** remap the published port and retry - a materially
+   different command, so it is a legitimate adaptation, not a repeat.
+4. **Terminal:** write the failing test instead. This is the common outcome and
+   not a degraded one - say the boot did not come up and hand over the test.
+
+One attempt per rung. Do not re-run an identical cold boot that needs a seeded
+database; it burns minutes to reach the same fallback.
+
 ## Sending the exploit
 
 The target is the instance you just booted, on its own port, and nothing else.
