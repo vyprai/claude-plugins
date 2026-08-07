@@ -6,6 +6,24 @@ optional; this file is the how.
 
 Only when asked, and only for a finding that survived verify.
 
+## First: what are you reproducing against?
+
+VyQL scans services and libraries alike, and they reproduce differently. Decide
+this before booting anything, and it should match the surface verify already
+recorded.
+
+| Surface | Reproduction |
+|---|---|
+| a runnable service (web app, API, worker with an entry point) | boot it and exploit its interface |
+| a library or package (no entry point of its own) | a test that calls the vulnerable API with attacker input |
+| a missing control (hardcoded secret, weak cipher) | nothing to run; name the control, do not invent a test |
+
+The library case is not a degraded service case. A library does not boot because
+it has no `main`: the caller supplies the input, so the reproduction is a test
+that plays the caller and passes the tainted value straight into the public API.
+If the surface is a library, skip the boot section entirely and go to **Library
+or package**, below.
+
 ## Booting the application
 
 A reproduction runs against an instance you started from a clean worktree. Never
@@ -105,11 +123,50 @@ If teardown fails, say so loudly with the container and worktree names. A
 container holding a port or a stray worktree costs more trust than a wrong
 finding does.
 
+## Library or package: exercise the API directly
+
+There is nothing to boot, so do not try to. Write a test in the library's own
+framework that calls the public function the finding flows from, with the input
+an attacker would control, and asserts the sink is not reached. The test is the
+caller VyQL said the library trusts, so the test plays the attacker.
+
+Run it from the clean worktree, in the project's own test runner, so the line
+numbers and dependencies match the scanned commit.
+
+A path traversal in a file-serving helper:
+
+```python
+def test_read_asset_rejects_traversal():
+    # read_asset is the public API; the caller (this test) is the attacker.
+    with pytest.raises(ValueError):
+        lib.read_asset("../../etc/passwd")   # today returns the file's contents
+```
+
+A command injection in a task-runner library:
+
+```python
+def test_run_hook_does_not_shell_out(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValueError):
+        lib.run_hook("; touch pwned")        # today reaches shell=True
+    assert not (tmp_path / "pwned").exists()
+```
+
+A library reproduction carries an assumption the service case does not, and you
+state it: the finding is real **for a caller that passes untrusted input to this
+API**. That is the library's contract to document, not proof that any particular
+consumer is exploitable. It matches the surface verify recorded: "real, but the
+caller supplies the input."
+
+If the library has no test suite, write the smallest standalone script that
+imports it and calls the API the same way, and say a suite would be the better
+home.
+
 ## What it proves
 
 The path is reachable with the input the analyzer claimed. Not the blast radius,
 not production exploitability, and not a verdict on the other findings in that
-family.
+family. For a library, add: reachable **by a caller that supplies the input**.
 
 An exploit that does **not** reproduce is not a false positive. The boot may be
 misconfigured, the route unregistered, the payload wrong. Report it unresolved,
