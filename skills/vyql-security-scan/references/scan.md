@@ -57,8 +57,22 @@ find it, do not just raise the cap.
 
 ### Timeout / stuck (verdict `killed at Ns cap`, exit 124)
 
-First ask vyql where the cost is. `-stats` names the taint hubs that drive the
-blowup, captured here on a pathological input:
+A timeout is not automatically a pathology. First tell apart a scan that was
+**making progress** from one that was **stuck**, because the fix is opposite.
+
+**Was it just slow? Raise the cap first.** The scope probe sizes the cap from the
+file count, and that is only an estimate: a large but healthy tree can genuinely
+need longer. The 94 MB tree in `fixtures/stress/SIGNATURES.md` finished at 121s,
+so a 120s cap would have killed a perfectly good scan. If the probe found no
+giant single file and no blowup hub, and the killed run's output showed findings
+accumulating, the timeout means the estimate was low, not that the code is
+pathological. Raise the cap a tier and retry, up to the 10-minute hard cap. That
+is a real adaptation, not a wasted retry - and it is the right first move here,
+not a last resort.
+
+**Was it stuck? A longer cap will not save it.** If the scope probe flagged one
+enormous file, or `-stats` shows a hub with high `in` and high `out`, more time
+only buys more thrash. Find where the cost is and cut it out. Ask vyql:
 
 ```
 [stats] files 2 | nodes 70098 | edges 88077 | sources 6000 | sinks 9
@@ -68,8 +82,7 @@ blowup, captured here on a pathological input:
 ```
 
 A hub with high `in` and high `out` is the combinatorial risk, and its location
-tells you which file to act on. Cross-check it against the scope probe's
-large-file list. The worst input is machine-generated code (one enormous
+names the file to act on. The worst input is machine-generated code (one enormous
 function per template, thousands of nested branches). Adapt:
 
 1. `-exclude` the implicated path: the generated, vendored, or outlier file the
@@ -83,9 +96,12 @@ function per template, thousands of nested branches). Adapt:
    hubs, less work per pass.
 4. Chunk by directory and scan the parts, letting `-cache` carry state between
    chunks (helps when the cost is spread across files, not one giant file).
-5. Raise the cap one tier, once, only with `-stats` evidence of forward progress.
-6. Still stuck: escalate, and report the file to vyql as a scope-width case. It
+5. Still stuck: escalate, and report the file to vyql as a scope-width case. It
    is a vyql issue, not the user's code.
+
+The two branches are not exclusive: raise the cap once for a slow-but-progressing
+scan, and if the longer run still dies at the cap, treat it as stuck and work the
+list above. Either way the max-3 adaptation budget still bounds the loop.
 
 ### Empty or garbage output
 
