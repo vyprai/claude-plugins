@@ -2,6 +2,20 @@
 
 Read this when you need a command the phase text did not give you.
 
+## Time-box the expensive ones
+
+`scan`, `explain` and `graph` can hang on a large tree or a huge file, so run
+them through the time-boxer in `references/scan.md`, never raw:
+
+```sh
+sh references/vyql-run.sh <cap> /tmp/vyql.out -- vyql scan -fail-on none -all .
+```
+
+`<cap>` comes from the scope probe (`references/scope.md`). Do not pass
+`-max-ram`: memory is vyql's concern, time is the skill's. The cheap read-only
+queries below (`match`, `resolve`, `bindings`, `definitions`) are fine
+unbounded, but if any hangs, wrap it the same way.
+
 | Command | Answers |
 |---|---|
 | `vyql scan -fail-on none -all .` | what is wrong, everything reported |
