@@ -62,8 +62,8 @@ A timeout is not automatically a pathology. First tell apart a scan that was
 
 **Was it just slow? Raise the cap first.** The scope probe sizes the cap from the
 file count, and that is only an estimate: a large but healthy tree can genuinely
-need longer. The 94 MB tree in `fixtures/stress/SIGNATURES.md` finished at 121s,
-so a 120s cap would have killed a perfectly good scan. If the probe found no
+need longer. A 94 MB tree of ~3,400 files finishes in about 121s, so a 120s cap
+would have killed a perfectly good scan. If the probe found no
 giant single file and no blowup hub, and the killed run's output showed findings
 accumulating, the timeout means the estimate was low, not that the code is
 pathological. Raise the cap a tier and retry, up to the 10-minute hard cap. That
