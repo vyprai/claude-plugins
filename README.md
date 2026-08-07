@@ -66,6 +66,30 @@ you  fix it then
 A reproduction runs against your own machine and nothing else, and the skill asks
 before executing one. Writing it is the deliverable; running it is your call.
 
+### Running it
+
+Ask in plain language, or invoke it explicitly:
+
+```
+/vyql:scan            scans the current directory
+/vyql:scan src/api    scopes to a path
+/vyql:scan diff       reviews the pending change against its base
+```
+
+Every vyql call is time-bounded, a wall-clock cap sized to the tree, so a scan
+that would otherwise get stuck (vyql can struggle on a single very large file) is
+killed and reported, not left running. Memory is vyql's own concern, not the
+skill's. When a step fails, the skill diagnoses and pivots (different flags,
+narrower scope, a different boot strategy) up to three times before escalating
+with concrete options, rather than quitting at the first error.
+
+### Coexisting with other security skills
+
+Skill selection is the model reading a flat list of skill descriptions. With
+several security skills installed that describe the same triggers, it may pick
+another one for "scan this repo". Two ways to be certain you get VyQL: name the
+engine ("scan with VyQL"), or use `/vyql:scan`, which invokes it directly.
+
 The flow underneath is always the same, and you stop wherever you have your
 answer:
 
