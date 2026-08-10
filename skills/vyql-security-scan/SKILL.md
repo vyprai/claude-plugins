@@ -1,14 +1,15 @@
 ---
 name: vyql-security-scan
 description: >-
-  Scan a codebase for security vulnerabilities with VyQL and triage what it
-  finds, following tainted data from source to sink and naming the neutralizing
-  controls that are missing. Use when asked to find vulnerabilities, run a
-  security scan or audit, review a diff or pull request for security problems,
-  check for injection, XSS, SSRF, path traversal or hardcoded secrets, review
-  code for security issues, or judge whether a specific scanner finding is real
-  or a false positive. Covers Java, Python, JavaScript/TypeScript, Go, C#, PHP,
-  Ruby and 15 more languages.
+  VyQL is a multi-language taint scanner: it follows attacker-controlled data
+  from source to sink and reports the neutralizing controls that are missing, so
+  a finding can be argued with rather than believed. Use when the user names
+  VyQL, or asks to find vulnerabilities, run a security scan or audit, review a
+  diff or pull request for security problems, check for injection, XSS, SSRF,
+  path traversal or hardcoded secrets, or judge whether a scanner finding is real
+  or a false positive. Scans resiliently, reports coverage honestly, and verifies
+  each finding against the code rather than trusting the scanner. Covers Java,
+  Python, JavaScript/TypeScript, Go, C#, PHP, Ruby and 15 more languages.
 license: Apache-2.0
 compatibility: >-
   Requires the vyql CLI (v0.2.0+). Offers to download a release archive on first
@@ -85,6 +86,43 @@ mounting their `.env` is a rule against doing it silently, not against being
 given it. But a verdict resting on user-supplied context records that it does:
 "real, assuming `internal/` is deployed, which the user confirmed."
 
+## Resilience: never quit at the first error
+
+Every phase can fail, and a failed command is not a finished phase. Work each
+failure through one loop, and never retry a command unchanged.
+
+**observe -> diagnose -> adapt -> retry, at most 3 adaptations per phase.**
+
+- **Observe** with vyql's own evidence: exit code, stderr, the `vyql-run`
+  verdict line, `-stats`, `-coverage`, wall time.
+- **Diagnose** in one written line before retrying. Name the cause, not the
+  symptom.
+- **Adapt** by changing something material: a flag, the scope, the strategy.
+  Retrying a byte-identical command is forbidden. Probe-driven pre-adaptations
+  (from scope) do not count against the 3.
+- **Retry**, then re-observe.
+
+Each phase's reference file carries its own pivot ladder, because the pivots
+differ: scan pivots on flags and scope (`references/scan.md`), reproduce pivots
+on boot strategy (`references/reproduce.md`).
+
+**Time-bounded, always.** Run every vyql call, and any other call that can block
+(a boot, a long clone), through the `vyql-run` time-boxer in
+`references/scan.md`, with a wall-clock cap from the scope probe. Stock macOS has
+no `timeout`, which is why the helper exists. The skill does not manage memory:
+that is vyql's own concern. The time bound is the single guarantee that no call
+hangs.
+
+**Reflect when the ladder runs out.** The references cannot list every failure.
+On a symptom none of them names, read `vyql <cmd> -h` and the scope probe and
+reason out the next adaptation from the CLI surface. Quitting and repeating are
+both failures.
+
+**Escalate after 3.** Report, do not shrug: each command tried, what was
+observed, the diagnosis, and 2-3 concrete options the user can choose (scan a
+subset, exclude a file, run it overnight, report a vyql bug). A partial scan is
+never presented as a complete one.
+
 ---
 
 ## 1. Scope
@@ -94,17 +132,29 @@ Decide what to look at before running anything.
 | The user is asking | Scope |
 |---|---|
 | "audit this repo", "is this codebase secure" | the whole tree |
-| "review this PR", "did my change introduce anything" | the diff |
+| "is this branch secure", "review this PR", "what did my change add" | the change |
 
-The diff case is not the whole-tree scan with a filter. On a codebase with a
+The change case is not the whole-tree scan with a filter. On a codebase with a
 backlog it buries the findings a change introduced under the ones it did not.
-`references/scope.md` has the recipe.
+Record the base as a `-baseline-write` snapshot and scan with `-baseline` so only
+new findings remain. `references/scope.md` has that recipe.
+
+Before scanning either way, offer a project-tuned skip list: name the extra
+directories worth excluding for this stack (and only those vyql does not already
+skip), and confirm with the user before proceeding. `references/scope.md` covers
+what is already skipped by default and how `-exclude` matches.
 
 ## 2. Scan
 
+Run it time-bounded, through the helper, never raw:
+
 ```sh
-vyql scan -fail-on none -all .
+sh references/vyql-run.sh <cap> /tmp/vyql.out -- vyql scan -fail-on none -all .
 ```
+
+`references/scan.md` has the time-boxer, the cap from the probe, and the ladder
+for when the scan hangs or returns something you do not trust. Do not pass
+`-max-ram`: memory is vyql's concern, the time bound is the skill's.
 
 `-fail-on none` matters. By default `scan` exits 1 when it finds anything HIGH
 or CRITICAL, which is right for CI and wrong here. A non-zero exit reads as "the
@@ -209,6 +259,14 @@ These are the difference between a useful security report and a dangerous one.
 - Verified means the static path holds up. It does not mean exploitable.
 - If a scan took an implausibly short time or read implausibly few files, say so
   before anything else.
+- VyQL's report is a hypothesis, not evidence. A verdict cites code you read and
+  a path you walked, never only the scanner's claim about itself.
+- Silence over an unmodelled framework is not safety. Coverage names the
+  frameworks and templating engines in the tree that VyQL has no bindings for.
+- A scan that cannot finish within a sane time bound - typically vyql thrashing
+  on a very large file - is a vyql-side limitation. Work around it (exclude the
+  file, narrow scope) and report it upstream; never present the partial scan as
+  complete.
 
 ## Command reference
 
