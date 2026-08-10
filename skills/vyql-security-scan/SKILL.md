@@ -132,11 +132,17 @@ Decide what to look at before running anything.
 | The user is asking | Scope |
 |---|---|
 | "audit this repo", "is this codebase secure" | the whole tree |
-| "review this PR", "did my change introduce anything" | the diff |
+| "is this branch secure", "review this PR", "what did my change add" | the change |
 
-The diff case is not the whole-tree scan with a filter. On a codebase with a
+The change case is not the whole-tree scan with a filter. On a codebase with a
 backlog it buries the findings a change introduced under the ones it did not.
-`references/scope.md` has the recipe.
+Record the base as a `-baseline-write` snapshot and scan with `-baseline` so only
+new findings remain. `references/scope.md` has that recipe.
+
+Before scanning either way, offer a project-tuned skip list: name the extra
+directories worth excluding for this stack (and only those vyql does not already
+skip), and confirm with the user before proceeding. `references/scope.md` covers
+what is already skipped by default and how `-exclude` matches.
 
 ## 2. Scan
 
