@@ -17,7 +17,7 @@ scanner is not a verdict.
 Group the findings before verifying any of them.
 
 ```sh
-vyql scan -fail-on none --format json . > /tmp/vyql-findings.json
+vyql scan -fail-on none -format json . > /tmp/vyql-findings.json
 ```
 
 Each finding carries a `rule` like `VYQL-INJ-004`. The family is the middle
@@ -32,7 +32,7 @@ repo's root (offer to add it to `.gitignore`), and save the raw scan JSON beside
 it:
 
 ```sh
-vyql scan -fail-on none --format json . > vyql-findings.json
+vyql scan -fail-on none -format json . > vyql-findings.json
 ```
 
 `vyql-triage.md` structure:

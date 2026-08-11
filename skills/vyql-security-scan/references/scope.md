@@ -22,14 +22,14 @@ base=$(git merge-base HEAD origin/main)          # or the PR's base ref
 git worktree add -q /tmp/vyql-base "$base"
 # Record every finding that already exists on the base as accepted.
 sh references/vyql-run.sh <cap> /tmp/bw.out -- \
-  vyql scan -fail-on none -all -baseline-write /tmp/base.json /tmp/vyql-base
+  vyql scan -fail-on none -flags with -baseline-write /tmp/base.json /tmp/vyql-base
 # Report only the findings the change introduced.
 sh references/vyql-run.sh <cap> /tmp/new.out -- \
-  vyql scan -fail-on none -all -baseline /tmp/base.json .
+  vyql scan -fail-on none -flags with -baseline /tmp/base.json .
 git worktree remove /tmp/vyql-base --force
 ```
 
-Use the **same flags on both sides** (`-all` here), or findings that only one
+Use the **same flags on both sides** (`-flags with` here), or findings that only one
 side reports all read as new.
 
 **Use a worktree, never `git stash`.** Stashing puts the user's uncommitted work

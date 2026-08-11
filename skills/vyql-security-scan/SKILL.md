@@ -149,20 +149,37 @@ what is already skipped by default and how `-exclude` matches.
 Run it time-bounded, through the helper, never raw:
 
 ```sh
-sh references/vyql-run.sh <cap> /tmp/vyql.out -- vyql scan -fail-on none -all .
+sh references/vyql-run.sh <cap> /tmp/vyql.out -- vyql scan -fail-on none -flags with .
 ```
 
 `references/scan.md` has the time-boxer, the cap from the probe, and the ladder
 for when the scan hangs or returns something you do not trust. Do not pass
 `-max-ram`: memory is vyql's concern, the time bound is the skill's.
 
-`-fail-on none` matters. By default `scan` exits 1 when it finds anything HIGH
+`-fail-on none` matters. By default `scan` exits 3 when it finds anything HIGH
 or CRITICAL, which is right for CI and wrong here. A non-zero exit reads as "the
-scan failed" and derails the run. `-all` adds attention and review flags that a
-plain scan omits.
+scan failed" and derails the run. `-flags with` adds attention and review flags
+that a plain scan omits.
+
+The four codes are the same on every vyql command, and they tell you which
+problem you have:
+
+| code | meaning |
+|---|---|
+| `0` | it did what you asked |
+| `1` | vyql could not complete — bad path, unreadable file, rules that do not compile |
+| `2` | the invocation was wrong — unknown flag or command, a value outside its set |
+| `3` | the check ran and did not pass — findings at or above `-fail-on` |
+
+`2` is your mistake and the message says what to fix; `1` is a vyql problem and
+belongs in an escalation. Never read either as "no findings".
 
 A plain scan already reports every severity; the gate only changes the exit
 code. There is no flag to "show more findings".
+
+Diagnostics — `-coverage`, `-stats`, warnings — go to stderr, and only the
+report goes to stdout. `vyql-run.sh` captures both into one file, so read it as
+written; if you redirect stdout yourself, the coverage account is not in it.
 
 ## 3. Coverage, before any finding
 

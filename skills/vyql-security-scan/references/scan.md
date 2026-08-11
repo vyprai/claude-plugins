@@ -42,7 +42,7 @@ The cap comes from the scope probe (`references/scope.md`): a size tier of
 that is vyql's own knob and its own concern. Bound time, observe the result:
 
 ```sh
-sh references/vyql-run.sh 300 /tmp/vyql.out -- vyql scan -fail-on none -all .
+sh references/vyql-run.sh 300 /tmp/vyql.out -- vyql scan -fail-on none -flags with .
 ```
 
 ## When the scan misbehaves: observe, diagnose, adapt
