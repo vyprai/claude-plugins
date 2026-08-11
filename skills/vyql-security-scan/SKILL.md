@@ -166,7 +166,7 @@ problem you have:
 
 | code | meaning |
 |---|---|
-| `0` | it did what you asked |
+| `0` | the command run successfully |
 | `1` | vyql could not complete — bad path, unreadable file, rules that do not compile |
 | `2` | the invocation was wrong — unknown flag or command, a value outside its set |
 | `3` | the check ran and did not pass — findings at or above `-fail-on` |
