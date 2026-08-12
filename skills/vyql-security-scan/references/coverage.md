@@ -14,6 +14,15 @@ report over a tree that was mostly skipped looks exactly like a clean report ove
 a tree that was fully read. Run `vyql scan -coverage .` for the full account when
 anything looks off.
 
+The coverage account goes to **stderr**, along with every other diagnostic —
+stdout carries only the report, so `-format json` and `-format sarif` stay
+parseable. `vyql-run.sh` captures both streams into one file. If you redirect
+stdout yourself, redirect stderr too or the account is lost.
+
+`-coverage` also reports how much each `-exclude` pattern actually excluded. A
+pattern marked `← matched nothing` is a filter that is not doing what whoever
+wrote it believed, which is worth saying out loud before reporting a clean tree.
+
 Three things to state plainly, before any finding:
 
 1. **What was actually parsed**, from the `scanned` line, against what is in the
@@ -40,7 +49,7 @@ actually uses, then ask VyQL what it models.
 cat package.json requirements.txt go.mod pom.xml Gemfile composer.json 2>/dev/null
 
 # What VyQL models for the languages present, and whether a given framework is bound.
-vyql bindings -lang javascript
+vyql definitions -kind bindings -lang javascript
 vyql definitions -query flask
 vyql definitions -query express
 ```

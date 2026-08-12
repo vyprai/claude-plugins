@@ -20,7 +20,7 @@ library is not modelled: a binding gap, not an engine bug.
 Confirm what the vocabulary contains:
 
 ```sh
-vyql bindings -lang python           # this language's sources, sinks, checks
+vyql definitions -kind bindings -lang python           # this language's sources, sinks, checks
 vyql definitions -kind concepts      # the whole concept vocabulary
 ```
 
@@ -91,7 +91,7 @@ already know the family you care about.
 
 ```sh
 vyql graph .
-vyql graph -taint .
+vyql trace .
 ```
 
 Verbose and definitive. Reach for it when `match`, `resolve` and `trace` all

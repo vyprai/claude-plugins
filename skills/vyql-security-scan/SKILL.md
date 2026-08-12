@@ -12,7 +12,7 @@ description: >-
   Python, JavaScript/TypeScript, Go, C#, PHP, Ruby and 15 more languages.
 license: Apache-2.0
 compatibility: >-
-  Requires the vyql CLI (v0.2.0+). Offers to download a release archive on first
+  Requires the vyql CLI (v0.3.0+). Offers to download a release archive on first
   use if absent, with the user's confirmation. Network access is needed only for
   that install.
 metadata:
@@ -60,13 +60,19 @@ something the user cannot undo.
 
 | Phase | Gate |
 |---|---|
-| scope, scan, coverage, list | none. Read-only, cheap, and the point of asking |
+| scope | **ask.** Propose what to scan and what to skip, wait for a yes |
+| scan, coverage | none. Read-only, cheap, and the point of asking |
+| list | none to show it. **Ask** before withholding any part of it |
 | verify | **ask.** Name the families found, propose the batch, wait |
 | reproduce | **ask twice.** Once to write one, again before booting anything |
 | fix | **asks, and does nothing until told.** Optional, never reached on its own |
 
-A user who asked "is this repo secure" gets coverage and a list without being
-asked three times whether they meant it.
+Scope is asked because it decides what the scan cannot find. Everything after it
+is read from a scan that already happened, and a user who asked "is this repo
+secure" should not be asked three more times whether they meant it.
+
+The list gate runs the other way from the rest. Showing findings needs no
+permission; **not** showing them does.
 
 ## When you are blocked
 
@@ -139,30 +145,71 @@ backlog it buries the findings a change introduced under the ones it did not.
 Record the base as a `-baseline-write` snapshot and scan with `-baseline` so only
 new findings remain. `references/scope.md` has that recipe.
 
-Before scanning either way, offer a project-tuned skip list: name the extra
-directories worth excluding for this stack (and only those vyql does not already
-skip), and confirm with the user before proceeding. `references/scope.md` covers
-what is already skipped by default and how `-exclude` matches.
+**Ask before you scan, and wait.** Scope decides what the scan cannot find, and
+that is not a decision to make on someone's behalf: a directory skipped here is a
+directory the report will call clean without having read it.
+
+Propose the tree or the change, and propose a project-tuned skip list alongside
+it — the extra directories worth excluding for this stack, and only those vyql
+does not already skip. Say why each one is on the list, because "vendored
+dependencies you do not patch" and "the code you asked me to audit" are different
+things and the user is the one who knows which is which.
+
+```
+Scanning the whole tree. vendor/, node_modules/ and testdata/ are skipped
+already. On top of those I would skip:
+
+  **/*_templ.go    generated templates, one huge function each
+  examples/        sample code, not shipped
+  docs/            prose
+
+Anything else to leave out, or shall I go?
+```
+
+Naming what is *already* skipped costs a line and buys the user the difference
+between "unread because I chose to" and "unread because it always is".
+
+Offer the additions rather than assuming them, and take a "scan everything"
+plainly — declining the skip list is a valid answer, not a mistake to argue with.
+`references/scope.md` covers what is already skipped by default and how
+`-exclude` matches.
 
 ## 2. Scan
 
 Run it time-bounded, through the helper, never raw:
 
 ```sh
-sh references/vyql-run.sh <cap> /tmp/vyql.out -- vyql scan -fail-on none -all .
+sh references/vyql-run.sh <cap> /tmp/vyql.out -- vyql scan -fail-on none -flags with .
 ```
 
 `references/scan.md` has the time-boxer, the cap from the probe, and the ladder
 for when the scan hangs or returns something you do not trust. Do not pass
 `-max-ram`: memory is vyql's concern, the time bound is the skill's.
 
-`-fail-on none` matters. By default `scan` exits 1 when it finds anything HIGH
+`-fail-on none` matters. By default `scan` exits 3 when it finds anything HIGH
 or CRITICAL, which is right for CI and wrong here. A non-zero exit reads as "the
-scan failed" and derails the run. `-all` adds attention and review flags that a
-plain scan omits.
+scan failed" and derails the run. `-flags with` adds attention and review flags
+that a plain scan omits.
+
+The four codes are the same on every vyql command, and they tell you which
+problem you have:
+
+| code | meaning |
+|---|---|
+| `0` | the command run successfully |
+| `1` | vyql could not complete — bad path, unreadable file, rules that do not compile |
+| `2` | the invocation was wrong — unknown flag or command, a value outside its set |
+| `3` | the check ran and did not pass — findings at or above `-fail-on` |
+
+`2` is your mistake and the message says what to fix; `1` is a vyql problem and
+belongs in an escalation. Never read either as "no findings".
 
 A plain scan already reports every severity; the gate only changes the exit
 code. There is no flag to "show more findings".
+
+Diagnostics — `-coverage`, `-stats`, warnings — go to stderr, and only the
+report goes to stdout. `vyql-run.sh` captures both into one file, so read it as
+written; if you redirect stdout yourself, the coverage account is not in it.
 
 ## 3. Coverage, before any finding
 
@@ -179,11 +226,32 @@ say what that was.
 
 ## 4. List
 
-Report all of them. There is no cap, and summarising some away loses the ones the
-user most needs.
-
 Number them, give every one a `path:line`, lead with rule and severity, keep it
 short. This phase is the menu, not the analysis. Order by severity.
+
+**Up to about 25 findings, show all of them.** There is no cap worth applying at
+that size, and summarising loses the ones the user most needs.
+
+**Past that, show CRITICAL and HIGH, and say exactly what you are holding back.**
+A hundred-line list is not a menu; the user scrolls past the thing they needed.
+But a shortened list that does not announce itself is the failure this whole
+skill exists to avoid — a partial view that reads as a complete one.
+
+So the count and the severities come first, then the shortened list, then the
+offer:
+
+```
+73 findings: 4 critical, 21 high, 39 medium, 9 low.
+Showing the 25 critical and high below. Say the word for the full list,
+or for the medium and low on their own.
+
+ 1. [CRITICAL] VYQL-INJ-002  api/users.py:88   request body reaches a shell
+ …
+```
+
+Never drop a severity silently, never say "and others", and never let the
+shortened list stand as the answer to "what did you find". The user asked what is
+in their code; they are being shown part of it, and they have to know that.
 
 Then ask which to verify, offering "all HIGH and CRITICAL" as the default. A
 serial verify of two hundred findings degrades silently, which is worse than not

@@ -62,7 +62,7 @@ So poll for whichever comes first, the app answering or the container exiting:
 ```sh
 port=$(docker compose port app 3000 | cut -d: -f2)
 for _ in $(seq 1 30); do
-  case "$(docker compose ps -a --format '{{.State}}' | head -1)" in
+  case "$(docker compose ps -a -format '{{.State}}' | head -1)" in
     exited) docker compose logs --tail 20; echo "boot failed"; break ;;
   esac
   curl -fsS -o /dev/null "http://127.0.0.1:$port/" && break

@@ -42,7 +42,7 @@ The cap comes from the scope probe (`references/scope.md`): a size tier of
 that is vyql's own knob and its own concern. Bound time, observe the result:
 
 ```sh
-sh references/vyql-run.sh 300 /tmp/vyql.out -- vyql scan -fail-on none -all .
+sh references/vyql-run.sh 300 /tmp/vyql.out -- vyql scan -fail-on none -flags with .
 ```
 
 ## When the scan misbehaves: observe, diagnose, adapt
@@ -87,10 +87,13 @@ function per template, thousands of nested branches). Adapt:
 
 1. `-exclude` the implicated path: the generated, vendored, or outlier file the
    hub or the probe pointed at. Then **report it as unscanned**, naming the file.
-   That is honest coverage, not a clean bill. (Recent vyql skips machine-generated
-   files by default and reports the count under `-coverage`; the `-include-generated`
-   flag puts them back. If your build does that, the file is already handled - just
-   confirm it on the coverage line.)
+   That is honest coverage, not a clean bill.
+
+   Generated files are not skipped for being generated — there is no flag for
+   that. What does catch most of them is the 2 MiB `-max-file-size` ceiling,
+   which reports its count under `-coverage`. A generated file under that ceiling
+   is scanned like any other, so exclude it by name or by pattern:
+   `-exclude '**/*_templ.go'`, `-exclude '**/*.pb.go'`.
 2. `-cache off` - if the on-disk cache is implicated, this can change the load.
 3. `-rules vyql/packs/injection` (one pack at a time) - fewer concurrent taint
    hubs, less work per pass.

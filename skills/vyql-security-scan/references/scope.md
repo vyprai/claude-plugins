@@ -22,14 +22,14 @@ base=$(git merge-base HEAD origin/main)          # or the PR's base ref
 git worktree add -q /tmp/vyql-base "$base"
 # Record every finding that already exists on the base as accepted.
 sh references/vyql-run.sh <cap> /tmp/bw.out -- \
-  vyql scan -fail-on none -all -baseline-write /tmp/base.json /tmp/vyql-base
+  vyql scan -fail-on none -flags with -baseline-write /tmp/base.json /tmp/vyql-base
 # Report only the findings the change introduced.
 sh references/vyql-run.sh <cap> /tmp/new.out -- \
-  vyql scan -fail-on none -all -baseline /tmp/base.json .
+  vyql scan -fail-on none -flags with -baseline /tmp/base.json .
 git worktree remove /tmp/vyql-base --force
 ```
 
-Use the **same flags on both sides** (`-all` here), or findings that only one
+Use the **same flags on both sides** (`-flags with` here), or findings that only one
 side reports all read as new.
 
 **Use a worktree, never `git stash`.** Stashing puts the user's uncommitted work
@@ -82,19 +82,43 @@ of the run.
 
 ## Offer a skip list, then confirm
 
-Before the first scan, propose a skip list tuned to the project, and let the user
-approve it. Two facts keep the proposal honest:
+Before the first scan, propose a skip list tuned to the project, and **wait for
+the user to approve it**. A directory skipped here is a directory the report will
+call clean without having read it, so this is the one gate before the scan.
 
-**What vyql already skips, so do not propose it.** By default it drops `vendor`,
-`node_modules`, `.git`, `dist`, `testdata`, and dot-directories, and the Go
-frontend also skips `*_test.go` files. So for a Go project, test files and
-vendored dependencies are *already* gone - saying "I will skip `*_test.go`" is
-wrong, it is already skipped. Check the defaults before offering anything.
+Two facts keep the proposal honest:
 
-**`-exclude` matches whole path segments, not globs.** `-exclude migrations`
-skips any `migrations/` directory; there is no `-exclude "*_test.go"`, because it
-compares each path segment for equality, not a filename pattern. Propose
-directory names, not glob patterns.
+**What vyql already skips, so do not propose it.** The walk drops
+`node_modules`, `.git`, `dist`, `target`, `__pycache__`, `.venv`, `venv`,
+`testdata`, `vendor`, and `build` when it sits at the scan root — plus every
+dot-directory except `.github`, `.circleci` and `.buildkite`, which are scanned
+because CI configuration is worth reading. The Go frontend also skips `*_test.go`.
+
+So for a Go project, test files and vendored dependencies are *already* gone:
+saying "I will skip `*_test.go`" is wrong, and so is offering `.venv` on a Python
+project or `target` on a Java one. Check this list before offering anything.
+
+**`-exclude` takes one pattern per flag, and is repeatable.** One rule decides
+what a pattern means:
+
+| Pattern | Matches |
+|---|---|
+| `migrations` | that directory, at any depth |
+| `'**/*_test.go'` | that file, at any depth |
+| `'src/gen/**'` | rooted at the scan root, because it has a slash |
+| `'**/*.{spec,test}.ts'` | brace alternation |
+
+A bare name is a directory; anything with a glob character or a slash is matched
+against the path. Repeat the flag for more than one pattern — a comma is rejected,
+because it would be ambiguous with a valid glob:
+
+```sh
+vyql scan -exclude vendor -exclude '**/*_templ.go' .
+```
+
+Directory patterns are the cheap ones: an excluded directory is never descended,
+so nothing under it is read. A file glob still has to see the filename to reject
+it. Prefer a directory name when either would do.
 
 Detect the project from its manifests (`go.mod`, `package.json`,
 `requirements.txt`/`pyproject.toml`, `pom.xml`) and offer the segments that are
@@ -102,11 +126,15 @@ Detect the project from its manifests (`go.mod`, `package.json`,
 
 | Project | Worth offering (beyond the defaults) |
 |---|---|
-| Go | `third_party`, `mocks` (`vendor`, `testdata`, `*_test.go` are already skipped) |
-| Python | `.venv`, `venv`, `migrations`, `tests` |
-| JS / TS | `build`, `coverage`, `out`, `.next`, `__mocks__` (`node_modules`, `dist` already skipped) |
-| Java / Kotlin | `target`, `build`, `generated-sources` |
-| any | `fixtures`, `examples`, `docs`, `migrations` |
+| Go | `third_party`, `mocks`, `'**/*_templ.go'`, `'**/*.pb.go'` |
+| Python | `migrations`, `tests` |
+| JS / TS | `coverage`, `out`, `__mocks__`, `'**/*.min.js'` |
+| Java / Kotlin | `generated-sources`, `'**/*Generated.java'` |
+| any | `fixtures`, `examples`, `docs` |
+
+Nothing in that table is skipped by default. `.venv`, `venv`, `target`,
+`__pycache__` and `.next` are, so offering them wastes the user's attention on a
+choice already made.
 
 Skipping a test directory is a judgment call, not a default: security bugs do
 live in test helpers, and a finding in `testdata/` is usually not a vulnerability

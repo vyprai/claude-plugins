@@ -8,7 +8,7 @@ Read this when you need a command the phase text did not give you.
 them through the time-boxer in `references/scan.md`, never raw:
 
 ```sh
-sh references/vyql-run.sh <cap> /tmp/vyql.out -- vyql scan -fail-on none -all .
+sh references/vyql-run.sh <cap> /tmp/vyql.out -- vyql scan -fail-on none -flags with .
 ```
 
 `<cap>` comes from the scope probe (`references/scope.md`). Do not pass
@@ -18,9 +18,9 @@ unbounded, but if any hangs, wrap it the same way.
 
 | Command | Answers |
 |---|---|
-| `vyql scan -fail-on none -all .` | what is wrong, everything reported |
+| `vyql scan -fail-on none -flags with .` | what is wrong, everything reported |
 | `vyql scan -coverage .` | what was read, skipped, and left unanalysed |
-| `vyql scan --format json .` | findings as JSON, for `diff` |
+| `vyql scan -format json .` | findings as JSON, for `diff` |
 | `vyql diff before.json after.json` | what a change introduced or removed |
 | `vyql explain .` | why each finding fired, with negation evidence |
 | `vyql query -concept X .` | every node labelled with a concept |
