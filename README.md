@@ -26,6 +26,16 @@ never restate which finding you mean:
 ```
 you  audit this repo for security problems
 
+     Scanning the whole tree. vendor/, node_modules/ and testdata/ are
+     skipped already. On top of those I would skip:
+
+       **/*_templ.go    generated templates, one huge function each
+       examples/        sample code, not shipped
+
+     Anything else to leave out, or shall I go?
+
+you  go
+
      scanned python:14 javascript:3, 2 files unread (.kt)
      7 findings. 2 critical, 3 high, 2 medium.
      1. VYQL-INJ-002  critical  api/users.py:88  request body reaches a shell
@@ -97,9 +107,18 @@ answer:
 scope → scan → coverage → list → verify → reproduce → fix
 ```
 
+**Scope is agreed before anything runs.** It decides what the scan cannot find,
+so a directory skipped there is one the report would call clean without having
+read it. The skill proposes what to scan and what to skip, and waits.
+
 **Coverage comes before findings, every time.** A clean report over a tree that
 was mostly skipped looks exactly like a clean report over a tree that was fully
 read, and the skill will not list findings without saying which is which.
+
+**A shortened list says so.** Past about 25 findings it shows the critical and
+high ones, states how many of each severity are held back, and offers the rest.
+A shortened list that does not announce itself is a partial view reading as a
+complete one.
 
 Verifying fans out, one agent per rule family, four at most. That grouping is
 the point: a systematic false positive arrives as a whole family, and one agent
