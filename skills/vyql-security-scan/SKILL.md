@@ -316,12 +316,11 @@ Every verdict carries **counterevidence** (what argues the other way, including
 when you still think it is real) and **proof gaps** (what the code could not
 settle). Unresolved is a legitimate outcome if you name the gap.
 
-**Filtering noise must never suppress a real finding.** The structural signals
-remove families of false positives, but two of them have a false-negative trap
-that `references/blindspots.md` spells out: an orphaned sink means VyQL could not
-adjudicate the class, not that the class is safe, so its findings still get read;
-and a CWE is dismissed for a specific API shape (a typed decode, an RE2 engine),
-never for the language as a whole. Verify the shape before you collapse a cluster.
+**Filtering noise must never suppress a real finding.** Two structural signals
+carry a false-negative trap, spelled out in `references/blindspots.md`: an orphaned
+sink means VyQL could not adjudicate the class, not that it is safe; and a CWE is
+dismissed for an API shape, never for the whole language. Verify the shape before
+collapsing a cluster.
 
 ## 6. Reproduce
 

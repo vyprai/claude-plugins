@@ -38,10 +38,9 @@ the main loop, cheaply, and it is what makes a scan of thousands of findings
 tractable. Only clusters that survive the structural pass need the source-reading
 verification below, and only those are worth a subagent.
 
-Two safeguards from `blindspots.md` carry into every collapse, because filtering
-noise must never hide a real finding: an orphaned sink means VyQL could not clear
-the class, not that the class is safe — read it; and a CWE is dismissed for a
-specific API shape, never for the language as a whole — confirm the shape first.
+Never collapse a cluster without confirming the shape: `blindspots.md` explains
+why an orphaned sink is unadjudicated rather than safe, and why a CWE is wrong for
+an API shape and not for the language.
 
 ### Write the worklist before dispatching
 
