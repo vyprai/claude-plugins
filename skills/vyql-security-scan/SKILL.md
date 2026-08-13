@@ -339,7 +339,13 @@ Three rules, not negotiable:
   the user has not confirmed is theirs.
 - **Writing it is the deliverable.** Running it is the user's call.
 
-`references/reproduce.md` has the boot, the exploit and the teardown.
+The three rules are the intent; `references/guard.sh` is the intent as code. This
+phase runs commands on the user's own tree, network, and credentials, so gate
+every command through the guard before running it — it refuses recursive deletes
+outside `/tmp`, credential and cloud-config access, `git push`, and any exploit
+request to a non-loopback host.
+
+`references/reproduce.md` has the gate, the boot, the exploit and the teardown.
 
 ## Record the verdict, or it is lost
 
@@ -387,6 +393,9 @@ These are the difference between a useful security report and a dangerous one.
   on a very large file - is a vyql-side limitation. Work around it (exclude the
   file, narrow scope) and report it upstream; never present the partial scan as
   complete.
+- A degraded result is not a success. If proof capture failed, a boot came up but
+  the route 404s, or a step produced nothing, say so with the result. A clean-
+  looking verdict over a silently failed step reads as evidence it is not.
 
 ## Command reference
 
