@@ -63,3 +63,25 @@ bindings, VyQL was blind to it. Report it by name alongside coverage:
 
 This is the coverage-phase half of "VyQL's output is a hypothesis": on the
 silence side, an unmodelled framework is a proof gap, not a clean result.
+
+## Unscanned file types are unscanned, not clean
+
+The `matched no frontend` warning lists extensions VyQL has no frontend for. On a
+real repository these are often the highest-value surfaces: SQL migrations
+(`.sql`), Terraform and other IaC (`.hcl`, `.tf`), shell, and templates. A scan
+that read the Go and TypeScript but skipped 273 migrations and 9 Terraform files
+has said nothing about the database or the infrastructure. State the unscanned
+extensions by count, and say which surfaces they leave unexamined, so a reader does
+not read "no findings" as covering the whole tree. Where it matters, point the user
+at a tool that does read those files.
+
+## The silent false negatives
+
+Coverage names what VyQL could not parse. It cannot name what VyQL parsed but
+mis-cleared. `references/blindspots.md` covers the harder silent case: an
+over-broad **check** binding — one matching a bare name like `authenticate` or
+`sanitize` — marks unrelated code as a neutralizing control and suppresses every
+finding on the flows it dominates, with nothing in the output to show for it. Over
+an attacker-facing surface, treat "no findings" as "not adjudicated" until the
+important flows are read by hand. A clean scan is the start of the review, not the
+end of it.

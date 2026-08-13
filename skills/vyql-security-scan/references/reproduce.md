@@ -6,6 +6,28 @@ optional; this file is the how.
 
 Only when asked, and only for a finding that survived verify.
 
+## Gate every command before it runs
+
+This phase runs commands on the user's own machine — their working tree, their
+network, their credentials — not in a sandbox. The three rules in `SKILL.md` are
+the intent; `references/guard.sh` is the intent as code, because a prose rule does
+not stop an agent that has reasoned itself into "just this once". Pass every
+command through the gate first, and run it only if the gate allows it:
+
+```sh
+sh references/guard.sh "$cmd" || exit 1   # refused: do not run it
+sh references/vyql-run.sh "$cap" /tmp/step.out -- $cmd
+```
+
+The gate refuses recursive deletes outside `/tmp`, writes to system directories,
+downloads piped into a shell, anything touching `~/.ssh`, `~/.aws`, cloud config
+or `.git/config`, `git push`, docker mounting the host root, and any network fetch
+to a host that is not loopback. That last one enforces "local only" as code: an
+exploit request to a non-loopback address is reaching real infrastructure, which
+is the exact shape of an SSRF proof fired at live metadata. When the gate refuses
+a command the user has explicitly approved for their case, say what was refused
+and let the user decide — never reword the command to slip past it.
+
 ## First: what are you reproducing against?
 
 VyQL scans services and libraries alike, and they reproduce differently. Decide
@@ -172,36 +194,10 @@ An exploit that does **not** reproduce is not a false positive. The boot may be
 misconfigured, the route unregistered, the payload wrong. Report it unresolved,
 with what was tried.
 
-
-
-A reproduction is **a failing test or a local request that shows the path is
-real**. It is not an exploit, and its job is to let the developer confirm the bug
-now and prove the fix later.
-
-Three rules, and they are not negotiable.
-
-- **Ask first.** Say what you are about to write and where it runs.
-- **Local only.** Against a service the user started on their own machine, or as
-  a test in their own suite. Never point it at a deployed host, a staging
-  environment, or any address the user has not confirmed is theirs.
-- **Do not run it against anything you did not just create.** Writing the repro
-  is the deliverable. Executing it is the user's call.
-
-Prefer the form the repo already has. A project with tests gets a failing test:
-
-```python
-def test_download_rejects_traversal(client):
-    r = client.get("/download", query_string={"name": "../../etc/passwd"})
-    assert r.status_code == 400        # fails today, passes once fixed
-```
-
-A service without a suite gets the request shape instead, against localhost.
-
-**What it proves:** the path is reachable with the input the analyzer claimed.
-Not the blast radius, not that it is exploitable in production, and not that
-other paths to the same sink are safe.
-
-If the finding is a missing control rather than a reachable path, a hardcoded
-secret or weak cipher, there is nothing to reproduce. Say so instead of inventing
-a test.
+**A degraded result is not a success.** If the proof did not land cleanly — the
+boot came up but the route returned 404, the response was not captured, the
+localhost listener recorded no request — say that in the same breath as the
+result. A reproduction reported as clean while its proof capture silently failed
+is worse than no reproduction, because it reads as evidence it is not. Name the
+gap; an empty proof is a defect in the reproduction, not an absence of news.
 

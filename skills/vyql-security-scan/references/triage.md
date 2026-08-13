@@ -4,7 +4,16 @@ What makes a finding real differs by vulnerability class. The general procedure
 is in `SKILL.md`; this is what to check per family, and the fix each one wants.
 
 Rule IDs are prefixed by family: `VYQL-INJ-*`, `VYQL-PATH-*`, `VYQL-CRY-*`,
-`VYQL-SEC-*`, `VYQL-SMELL-*`.
+`VYQL-SEC-*`, `VYQL-SMELL-*`. Each finding also carries a CWE, which is the axis to
+group and report on.
+
+**Before the per-class checks, run the structural signals in
+`references/blindspots.md`.** They settle whole clusters from the scan output — a
+CWE the language cannot express, a sink that is only a name collision, one handle
+tainting everything, an orphaned sink whose `unless` can never be satisfied, a
+rule on the wrong surface. Most false positives in every family below are one of
+those, and are cheaper to settle there than to read one finding at a time. The per-
+class checks here are for the findings that survive the structural pass.
 
 ## Injection: `VYQL-INJ-*`
 
@@ -16,6 +25,13 @@ rather than as *data*, and nothing on the path escapes or parameterizes it.
 **Check:**
 - Is the source actually request data? `vyql query -concept HttpInput .`. A
   "source" that is a config constant or an internal caller is a false positive.
+- **Is the sink the dangerous API, or a same-named call?** A command-injection
+  finding on JavaScript `.exec` is usually `RegExp.prototype.exec`, not
+  `child_process.exec` — check that the dangerous package is imported. A SQL or
+  path finding on an ORM method (`.Where`, `.Create`, `.Query`, `.Exec`) with a
+  struct or map literal argument is parameterized by construction and touches no
+  filesystem; the sink is a bare-name binding catching the ORM. Reserve the sink
+  for a string first argument on a real database or `os`/`filepath` receiver.
 - Does the value land in the query string, or in a bound parameter? A value
   passed as a parameter is data and cannot change the statement's shape.
 - Is there escaping VyQL did not see? Check the inline-concatenation shape in
@@ -75,6 +91,16 @@ somewhere it does not matter. Say what it is used *for* before calling it real.
 - Is it a live credential, a placeholder, a documentation example, or a test
   fixture? Vendor documentation values appear constantly and are not secrets.
 - Is the file actually committed, or is it ignored or generated?
+- **Is the value the shape of a credential, or the shape of an identifier?** A
+  literal whose value is a kebab or snake-case English phrase matching its own
+  constant name (`slugInvalidAPIKey = "invalid-api-key"`, `SECRET_SCANNING_ALERT =
+  "secret_scanning_alert"`) is an identifier, not a secret. Name-based detection
+  flags these because the name contains "secret", "key", or "token"; the value
+  gives them away. A real credential has entropy, not English words.
+- **Does the line already carry a suppression?** `//nolint:gosec`, `// #nosec`,
+  `# noqa`, `// eslint-disable-next-line security/*` on the flagged line or its
+  neighbours means another tool already reviewed it. A finding on an
+  already-suppressed line is not new; note it rather than raising it again.
 
 **Fix:** rotate first, then remove. **Say this explicitly.** Deleting a
 committed secret without rotating leaves it valid and still in git history,
