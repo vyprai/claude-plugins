@@ -12,17 +12,36 @@ mislabelled source. `vyql match`, `vyql resolve` and `vyql trace` corroborate;
 they never substitute for reading the code. A verdict that cites only the
 scanner is not a verdict.
 
-## Fanning out by family
+## Group by CWE, collapse by root cause, then fan out
 
-Group the findings before verifying any of them.
+Group the findings before verifying any of them, and settle the cheap structural
+signals before spending a subagent on anything.
 
 ```sh
 vyql scan -fail-on none -format json . > /tmp/vyql-findings.json
 ```
 
-Each finding carries a `rule` like `VYQL-INJ-004`. The family is the middle
-segment, `INJ`. Group by it, then order the groups by the highest severity each
-one contains.
+Each finding carries a `rule` like `VYQL-INJ-004` and a CWE like `CWE-89`. Group
+by **CWE** — that is the axis a reader acts on and a fix lands on — then order the
+groups by the highest severity each one contains.
+
+Within a CWE, collapse findings that share a **root cause** into one cluster: the
+same rule and sink API, the same taint source `file:line`, or the same
+unsatisfiable `unless` line. One cluster gets one verdict, and the verdict names
+how many findings it retires.
+
+**Run the structural signals in `references/blindspots.md` against each cluster
+first.** They settle a cluster from the scan output plus at most one grep — a CWE
+the language cannot express, a name-collision sink, one handle tainting everything,
+an orphaned sink, a wrong-surface rule, an existing suppression. This is done in
+the main loop, cheaply, and it is what makes a scan of thousands of findings
+tractable. Only clusters that survive the structural pass need the source-reading
+verification below, and only those are worth a subagent.
+
+Two safeguards from `blindspots.md` carry into every collapse, because filtering
+noise must never hide a real finding: an orphaned sink means VyQL could not clear
+the class, not that the class is safe — read it; and a CWE is dismissed for a
+specific API shape, never for the language as a whole — confirm the shape first.
 
 ### Write the worklist before dispatching
 
@@ -40,19 +59,25 @@ vyql scan -fail-on none -format json . > vyql-findings.json
 ```markdown
 # VyQL triage: <commit sha>, <date>
 Coverage: <scanned line>. Binding gaps: <frameworks with no bindings>.
+Blindspots: <orphaned sinks, unscanned filetypes, shallow packs>.
 
-## Findings
-1. [ ] VYQL-INJ-002  critical  api/users.py:88  request body -> shell
-2. [ ] VYQL-PATH-001 high      api/files.py:23  query param -> open()
-...
+## Clusters (by CWE, collapsed by root cause; count each retires)
+1. [ ] CWE-502  critical  341  DESER-001, json.Unmarshal into typed struct
+2. [ ] CWE-78   critical   13  INJ-002, `.exec` name collision (RegExp.exec)
+3. [ ] CWE-502  critical  412  DESER-001, all from one ws.go:8 conn source
+4. [ ] CWE-347  high        1  CFG-005, jwt.ParseUnverified
 
-## Batches (one agent per family, 4 max)
-- [ ] INJ (2)   verdict:
-- [ ] PATH (3)  verdict:
-- [ ] CRY (1)   deferred: over the 4-family cap
+## Structural pass (settle before spending a subagent)
+- [x] 1  false-positive: CWE-502 needs type instantiation; Go typed decode cannot
+- [x] 2  false-positive: name collision, no child_process import
+- [x] 3  false-positive: single handle source, collapse fan-out to one verdict
+- [ ] 4  survives structural pass -> source reading
+
+## Deep verify (survivors only, one subagent per cluster, 4 max)
+- [ ] CWE-347 (1)  verdict:
 
 ## Verdicts (append as they land)
-### INJ-002: real | false-positive | unresolved
+### CWE-347 / CFG-005: real | false-positive | unresolved
 counterevidence: ...
 proof gaps: ...
 ```
@@ -61,48 +86,54 @@ A later session resumes by re-scanning, `vyql diff vyql-findings.json <new>.json
 to confirm nothing moved, and picking up unchecked boxes. The worklist is working
 state; `references/baseline.md` remains the settled-verdict record.
 
-Spawn one subagent per family, **at most four per run**. Give each:
+Spawn one subagent per surviving cluster, **at most four per run**. Give each:
 
-- its family's findings, as the JSON objects
+- its cluster's findings, as the JSON objects
 - the repository path
-- the family's section of `references/triage.md`
+- the matching CWE section of `references/triage.md`
+- `references/blindspots.md`, so it applies the structural signals and the
+  false-negative safeguards itself
 - this file, from the next section onward
 
 Each returns verdicts in the format below: surface and source trust, the three
 questions, counterevidence, proof gaps.
 
-Four is a cost bound. Fourteen families exist in the corpus, and fourteen
-subagents is a token surprise large enough that someone uninstalls the skill over
-it. Four also keeps the returned verdicts small enough to reconcile in one reply.
+Four is a cost bound. A noisy scan can hold many clusters, and one subagent each
+is a token surprise large enough that someone uninstalls the skill over it. The
+structural pass already retired the large false-positive clusters cheaply, so four
+deep-verify subagents is usually enough for the survivors; four also keeps the
+returned verdicts small enough to reconcile in one reply.
 
-Families past the cap are **deferred, by name**, with an offer to run the next
+Clusters past the cap are **deferred, by name**, with an offer to run the next
 batch. Never drop one silently.
 
-If a subagent errors or times out, do not drop its family. Work the ladder:
+If a subagent errors or times out, do not drop its cluster. Work the ladder:
 
 1. Retry once with narrower scope: one finding at a time instead of the whole
-   family, so one pathological path cannot sink the batch.
-2. Still failing: mark the family **deferred by name** in `vyql-triage.md` with
+   cluster, so one pathological path cannot sink the batch.
+2. Still failing: mark the cluster **deferred by name** in `vyql-triage.md` with
    what was tried, and offer to run it alone next.
 
-A silently dropped family means a whole class went unexamined with nobody
+A silently dropped cluster means a whole class went unexamined with nobody
 noticing. That is the one outcome forbidden here.
 
 **Where there is no subagent capability**, run the same procedure sequentially in
-the main loop, one family at a time, and say that is what is happening. This file
+the main loop, one cluster at a time, and say that is what is happening. This file
 is a plain reference; nothing here needs subagents except the speed.
 
-### Why family and not severity
+### Why cluster by root cause and not severity
 
 Triage has already ordered by severity, so severity is spent by the time verify
 starts.
 
-The stronger reason is that systematic false positives arrive as a family. A
-repository with a sanitizer VyQL does not model will not produce one wrong
-finding; it produces every path traversal that flows through that helper. One
-agent holding all of them spots the shared call in a single pass. Split across
-severity buckets, several agents each conclude "looks real" and nobody sees the
-pattern.
+The stronger reason is that systematic false positives arrive together, from one
+mislabelled binding. A repository with a sanitizer VyQL does not model will not
+produce one wrong finding; it produces every path traversal that flows through
+that helper. A concept mapped to the wrong CWE for a language does not produce one
+wrong finding; it produces every call of that API in the codebase. One agent
+holding the whole cluster spots the shared cause in a single pass and writes one
+verdict. Split across severity buckets, several agents each conclude "looks real"
+and nobody sees the pattern.
 
 VyQL is a static analyzer. Verification here means the path holds up under
 scrutiny, not that the bug is exploitable. Say it in those terms and never report
@@ -223,4 +254,23 @@ one.
 
 A finding you cannot settle is a legitimate outcome. Report it as unresolved,
 name the gap, and say the smallest thing that would close it.
+
+## A false-positive verdict must disprove the finding, not just fail to prove it
+
+"False positive" and "unresolved" are different verdicts, and collapsing them is
+how a real vulnerability gets filed as noise. A false-positive verdict has to name
+the thing that makes the code safe:
+
+- the control that neutralizes the path — the sanitizer, the parameterization, the
+  canonicalization-then-check;
+- or why the CWE cannot apply to this API shape — the typed decode target, the RE2
+  engine, the constant source;
+- or why the sink is not the dangerous API — the name collision, the ORM struct
+  argument.
+
+"I read the code and could not find where this is exploitable" is **not** a
+false-positive verdict. It is unresolved, and it is exactly the shape an orphaned
+sink produces — VyQL could not clear the class, and neither could you. Report it as
+unresolved with the gap named. Only disproving evidence downgrades a finding to
+false positive.
 
