@@ -193,8 +193,9 @@ sh references/vyql-run.sh <cap> /tmp/vyql.out -- vyql scan -fail-on none -flags 
 ```
 
 `references/scan.md` has the time-boxer, the cap from the probe, and the ladder
-for when the scan hangs or returns something you do not trust. Do not pass
-`-max-ram`: memory is vyql's concern, the time bound is the skill's.
+for when the scan hangs or returns something you do not trust. You do not need
+`-max-ram`: memory is vyql's concern and on Linux it bounds itself, the time
+bound is the skill's.
 
 `-fail-on none` matters. By default `scan` exits 3 when it finds anything HIGH
 or CRITICAL, which is right for CI and wrong here. A non-zero exit reads as "the

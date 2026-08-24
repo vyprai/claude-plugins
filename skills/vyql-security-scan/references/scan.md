@@ -5,13 +5,15 @@ invocation hangs or returns something you do not trust.
 
 ## Every vyql call is time-bounded
 
-vyql can get stuck: on a single very large file (tens of thousands of LOC) its
-CGO/Badger internals thrash, and because that memory lives outside the Go
-runtime it does not crash, it just stops progressing. Managing that memory is
-vyql's job, not the skill's. The skill's job is only to guarantee no call hangs,
-with a wall-clock cap. Stock macOS has no `timeout`, so use this time-boxer. It
-kills the command at the cap and always leaves its output on disk for the
-observe step.
+vyql can get slow: on a single very large file (tens of thousands of LOC) its
+CGO/Badger internals thrash. Managing that memory is vyql's job, not the
+skill's. From v0.4.0 the Linux build does it: a scan watches its own resident
+size and stops with a message and exit 1 rather than growing until the kernel
+kills it. On macOS that watch is off, so there the wall-clock cap is still the
+only guarantee. Either way the skill's job is the same, to guarantee no call
+hangs, with a wall-clock cap. Stock macOS has no `timeout`, so use this
+time-boxer. It kills the command at the cap and always leaves its output on disk
+for the observe step.
 
 ```sh vyql-run
 #!/bin/sh
@@ -38,8 +40,9 @@ rm -f "$flag"; echo "vyql-run: exited rc=$rc within ${cap}s cap" >&2; exit "$rc"
 ```
 
 The cap comes from the scope probe (`references/scope.md`): a size tier of
-2, 5, or 10 minutes. Do not pass `-max-ram` or otherwise try to bound memory -
-that is vyql's own knob and its own concern. Bound time, observe the result:
+2, 5, or 10 minutes. You do not need `-max-ram`: on Linux, with no flag, vyql
+already holds itself to 95% of what the machine or the cgroup allows. Pass it
+only to ask for a tighter bound than that. Bound time, observe the result:
 
 ```sh
 sh references/vyql-run.sh 300 /tmp/vyql.out -- vyql scan -fail-on none -flags with .
@@ -49,6 +52,12 @@ sh references/vyql-run.sh 300 /tmp/vyql.out -- vyql scan -fail-on none -flags wi
 
 Read the `vyql-run` verdict line first. `killed at Ns cap` (exit 124) is a
 timeout; anything else means vyql returned and the problem is in its output.
+
+One of those returns is worth naming, on Linux: `exited rc=1` with a line
+reading `the scan reached ... of resident memory, past the ceiling of ...` means
+the tree needs more memory than the ceiling allows. Retrying it unchanged
+cannot work. Scan a subdirectory, `-exclude` the outlier the scope probe named,
+or raise `-max-ram` if the machine has the headroom.
 
 A true timeout is the exception, not the norm: modern vyql tamed the scope-width
 pathology that used to hang it, and even a 94 MB tree of 3400 files finishes in

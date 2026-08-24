@@ -11,8 +11,9 @@ them through the time-boxer in `references/scan.md`, never raw:
 sh references/vyql-run.sh <cap> /tmp/vyql.out -- vyql scan -fail-on none -flags with .
 ```
 
-`<cap>` comes from the scope probe (`references/scope.md`). Do not pass
-`-max-ram`: memory is vyql's concern, time is the skill's. The cheap read-only
+`<cap>` comes from the scope probe (`references/scope.md`). You do not need
+`-max-ram`: memory is vyql's concern and on Linux it bounds itself, time is the
+skill's. The cheap read-only
 queries below (`match`, `resolve`, `bindings`, `definitions`) are fine
 unbounded, but if any hangs, wrap it the same way.
 
