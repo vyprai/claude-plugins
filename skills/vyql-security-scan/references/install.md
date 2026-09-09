@@ -51,7 +51,7 @@ uname -m   # arm64/aarch64 -> arm64, x86_64/amd64 -> amd64
 ```
 
 ```sh
-V=v0.4.0; P=darwin_arm64        # linux_amd64 | linux_arm64 | darwin_amd64 | darwin_arm64
+V=v0.5.0; P=darwin_arm64        # linux_amd64 | linux_arm64 | darwin_amd64 | darwin_arm64
 curl -fsSLO https://github.com/vyprai/vyql/releases/download/$V/vyql_${V}_${P}.tar.gz
 curl -fsSLO https://github.com/vyprai/vyql/releases/download/$V/vyql_${V}_${P}.tar.gz.sha256
 shasum -a 256 -c vyql_${V}_${P}.tar.gz.sha256      # or sha256sum -c on Linux
